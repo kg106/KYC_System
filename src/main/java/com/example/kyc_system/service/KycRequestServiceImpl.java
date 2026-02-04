@@ -8,6 +8,7 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 @Service
@@ -26,6 +27,7 @@ public class KycRequestServiceImpl implements KycRequestService {
                 .map(r -> {
                     r.setAttemptNumber(r.getAttemptNumber() + 1);
                     r.setStatus(KycStatus.SUBMITTED.name());
+                    r.setSubmittedAt(LocalDateTime.now());
                     return r;
                 })
                 .orElseGet(() -> {
@@ -34,6 +36,7 @@ public class KycRequestServiceImpl implements KycRequestService {
                     newRequest.setUser(user);
                     newRequest.setStatus(KycStatus.SUBMITTED.name());
                     newRequest.setAttemptNumber(1);
+                    newRequest.setSubmittedAt(LocalDateTime.now());
                     return repository.save(newRequest);
                 });
     }
@@ -47,6 +50,6 @@ public class KycRequestServiceImpl implements KycRequestService {
 
     @Override
     public Optional<KycRequest> getLatestByUser(Long userId) {
-        return Optional.empty();
+        return repository.findTopByUserIdOrderByCreatedAtDesc(userId);
     }
 }
