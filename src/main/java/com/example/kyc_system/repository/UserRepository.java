@@ -15,10 +15,11 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findById(Long id);
 
     @Query("""
-        SELECT u FROM User u
-        WHERE LOWER(u.name) = LOWER(:name)
-          AND u.dob = :dob
-    """)
+                SELECT u FROM User u
+                WHERE LOWER(u.name) = LOWER(:name)
+                  AND u.dob = :dob
+            """)
     Optional<User> matchUserData(@Param("name") String name, @Param("dob") LocalDate dob);
-}
 
+    Optional<User> findByEmail(String email);
+}
