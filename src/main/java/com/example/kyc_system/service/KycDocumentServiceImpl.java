@@ -30,7 +30,8 @@ public class KycDocumentServiceImpl implements KycDocumentService {
     @Override
     public KycDocument save(Long requestId,
             DocumentType documentType,
-            MultipartFile file) {
+            MultipartFile file,
+            String documentNumber) {
 
         fileValidator.validate(file);
 
@@ -43,6 +44,7 @@ public class KycDocumentServiceImpl implements KycDocumentService {
         KycDocument doc = KycDocument.builder()
                 .kycRequest(request)
                 .documentType(documentType.name())
+                .documentNumber(documentNumber)
                 .documentPath(path)
                 .documentHash(hash)
                 .mimeType(file.getContentType())

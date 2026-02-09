@@ -25,6 +25,9 @@ public class KycDocument extends BaseEntity {
     @Column(name = "document_type", length = 20, nullable = false)
     private String documentType;
 
+    @Column(name = "document_number")
+    private String documentNumber;
+
     @Column(name = "uploaded_at")
     private LocalDateTime uploadedAt;
 

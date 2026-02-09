@@ -1,8 +1,6 @@
 package com.example.kyc_system.controller;
 
-import com.example.kyc_system.entity.KycRequest;
 import com.example.kyc_system.enums.DocumentType;
-import com.example.kyc_system.enums.KycStatus;
 import com.example.kyc_system.service.KycOrchestrationService;
 import com.example.kyc_system.service.KycRequestService;
 import lombok.RequiredArgsConstructor;
@@ -21,13 +19,12 @@ public class KycController {
     private final KycRequestService requestService;
 
     @PostMapping("/upload")
-    public ResponseEntity<?> uploadDocument(
-            @RequestParam("userId") Long userId,
+    public ResponseEntity<?> uploadDocument(@RequestParam("userId") Long userId,
             @RequestParam("documentType") DocumentType documentType,
-            @RequestParam("file") MultipartFile file) {
-
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("documentNumber") String documentNumber) {
         try {
-            orchestrationService.processKyc(userId, documentType, file);
+            orchestrationService.processKyc(userId, documentType, file, documentNumber);
             return ResponseEntity.ok(Map.of("message", "KYC processing started successfully"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -40,6 +37,7 @@ public class KycController {
                 .map(request -> ResponseEntity.ok(Map.of(
                         "requestId", request.getId(),
                         "status", request.getStatus(),
+                        "failureReason", request.getFailureReason(),
                         "attemptNumber", request.getAttemptNumber(),
                         "submittedAt", request.getCreatedAt())))
                 .orElse(ResponseEntity.notFound().build());

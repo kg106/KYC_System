@@ -26,14 +26,15 @@ public class KycOrchestrationService {
 
         public void processKyc(Long userId,
                         DocumentType documentType,
-                        MultipartFile file) {
+                        MultipartFile file,
+                        String documentNumber) {
 
                 User user = userService.getActiveUser(userId);
 
                 KycRequest request = requestService.createOrReuse(userId);
                 requestService.updateStatus(request.getId(), KycStatus.PROCESSING);
 
-                KycDocument document = documentService.save(request.getId(), documentType, file);
+                KycDocument document = documentService.save(request.getId(), documentType, file, documentNumber);
 
                 OcrResult ocrResult = ocrService.extract(toFile(file), documentType);
 
@@ -41,6 +42,7 @@ public class KycOrchestrationService {
 
                 KycVerificationResult result = verificationService.verifyAndSave(request.getId(), user, extracted);
 
+                request.setFailureReason(result.getDecisionReason());
                 requestService.updateStatus(
                                 request.getId(),
                                 KycStatus.valueOf(result.getFinalStatus()));

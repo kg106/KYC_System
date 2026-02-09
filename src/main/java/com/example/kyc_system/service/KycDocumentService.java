@@ -5,6 +5,6 @@ import com.example.kyc_system.enums.DocumentType;
 import org.springframework.web.multipart.MultipartFile;
 
 public interface KycDocumentService {
-        KycDocument save(Long requestId, DocumentType documentType, MultipartFile file);
+        KycDocument save(Long requestId, DocumentType documentType, MultipartFile file, String documentNumber);
 
 }

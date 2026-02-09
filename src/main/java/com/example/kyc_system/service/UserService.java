@@ -1,17 +1,19 @@
 package com.example.kyc_system.service;
 
 import com.example.kyc_system.entity.User;
+import com.example.kyc_system.dto.UserDTO;
+import java.util.List;
 
 public interface UserService {
     User getActiveUser(Long userId);
 
-    java.util.List<com.example.kyc_system.dto.UserDTO> getAllUsers();
+    List<UserDTO> getAllUsers();
 
-    com.example.kyc_system.dto.UserDTO getUserById(Long id);
+    UserDTO getUserById(Long id);
 
-    com.example.kyc_system.dto.UserDTO createUser(com.example.kyc_system.dto.UserDTO userDTO);
+    UserDTO createUser(UserDTO userDTO);
 
-    com.example.kyc_system.dto.UserDTO updateUser(Long id, com.example.kyc_system.dto.UserDTO userDTO);
+    UserDTO updateUser(Long id, UserDTO userDTO);
 
     void deleteUser(Long id);
 

@@ -26,12 +26,25 @@ public class KycExtractionServiceImpl implements KycExtractionService {
         KycExtractedData data = KycExtractedData.builder()
                 .kycDocument(document)
                 .extractedName(ocrResult.getName())
-                .extractedDob(ocrResult.getDob() != null ? LocalDate.parse(ocrResult.getDob()) : null)
+                .extractedDob(safeParseDate(ocrResult.getDob()))
                 .extractedDocumentNumber(ocrResult.getDocumentNumber())
                 .rawOcrResponse(ocrResult.getRawResponse())
                 .createdAt(LocalDateTime.now())
                 .build();
 
         return repository.save(data);
+    }
+
+    private LocalDate safeParseDate(String dateStr) {
+        if (dateStr == null || dateStr.trim().isEmpty()) {
+            return null;
+        }
+        try {
+            return LocalDate.parse(dateStr);
+        } catch (Exception e) {
+            // Log warning but don't crash the flow
+            System.err.println("Failed to parse extracted DOB: " + dateStr + ". Error: " + e.getMessage());
+            return null;
+        }
     }
 }
