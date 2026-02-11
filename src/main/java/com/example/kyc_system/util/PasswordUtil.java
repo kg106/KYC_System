@@ -1,8 +1,11 @@
 package com.example.kyc_system.util;
 
-import org.mindrot.jbcrypt.BCrypt;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 public class PasswordUtil {
+
+    private static final PasswordEncoder encoder = new BCryptPasswordEncoder();
 
     /**
      * Hash a password using BCrypt.
@@ -11,7 +14,7 @@ public class PasswordUtil {
      * @return the hashed password
      */
     public static String hashPassword(String plainPassword) {
-        return BCrypt.hashpw(plainPassword, BCrypt.gensalt());
+        return encoder.encode(plainPassword);
     }
 
     /**
@@ -22,6 +25,6 @@ public class PasswordUtil {
      * @return true if they match, false otherwise
      */
     public static boolean checkPassword(String plainPassword, String hashedPassword) {
-        return BCrypt.checkpw(plainPassword, hashedPassword);
+        return encoder.matches(plainPassword, hashedPassword);
     }
 }

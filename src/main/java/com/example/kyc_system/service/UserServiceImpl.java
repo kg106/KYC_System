@@ -1,25 +1,35 @@
 package com.example.kyc_system.service;
 
+import com.example.kyc_system.dto.LoginDTO;
 import com.example.kyc_system.dto.UserDTO;
 import com.example.kyc_system.entity.User;
+import com.example.kyc_system.entity.UserRole;
+import com.example.kyc_system.repository.RoleRepository;
 import com.example.kyc_system.repository.UserRepository;
+import com.example.kyc_system.repository.UserRoleRepository;
+import com.example.kyc_system.security.JwtTokenProvider;
 import com.example.kyc_system.util.PasswordUtil;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
-
-    public UserServiceImpl(UserRepository userRepository) {
-        this.userRepository = userRepository;
-    }
+    private final RoleRepository roleRepository;
+    private final UserRoleRepository userRoleRepository;
+    private final AuthenticationManager authenticationManager;
+    private final JwtTokenProvider jwtTokenProvider;
 
     @Override
     public User getActiveUser(Long userId) {
@@ -59,15 +69,17 @@ public class UserServiceImpl implements UserService {
                 .dob(userDTO.getDob())
                 .build();
 
-        // BaseEntity fields like createdAt handled by @PrePersist if exists or DB
-        // default,
-        // but here we just rely on standard JPA save. BaseEntity might need handling if
-        // not auto-managed.
-        // Assuming BaseEntity uses @CreationTimestamp or similar, or we set it manually
-        // if needed.
-        // Let's assume standard behavior for now.
-
         User savedUser = userRepository.save(user);
+
+        // Assign default ROLE_USER
+        roleRepository.findByName("ROLE_USER").ifPresent(role -> {
+            UserRole userRole = UserRole.builder()
+                    .user(savedUser)
+                    .role(role)
+                    .build();
+            userRoleRepository.save(userRole);
+        });
+
         return mapToDTO(savedUser);
     }
 
@@ -114,6 +126,16 @@ public class UserServiceImpl implements UserService {
         userRepository.save(user);
 
         return newPassword;
+    }
+
+    @Override
+    public String login(LoginDTO loginDTO) {
+        Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(
+                loginDTO.getEmail(), loginDTO.getPassword()));
+
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+
+        return jwtTokenProvider.generateToken(authentication);
     }
 
     private UserDTO mapToDTO(User user) {

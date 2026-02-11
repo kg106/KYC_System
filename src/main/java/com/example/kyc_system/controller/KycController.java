@@ -3,8 +3,10 @@ package com.example.kyc_system.controller;
 import com.example.kyc_system.enums.DocumentType;
 import com.example.kyc_system.service.KycOrchestrationService;
 import com.example.kyc_system.service.KycRequestService;
+import com.example.kyc_system.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -17,8 +19,10 @@ public class KycController {
 
     private final KycOrchestrationService orchestrationService;
     private final KycRequestService requestService;
+    private final UserService userService;
 
     @PostMapping("/upload")
+    @PreAuthorize("@securityService.canAccessUser(#userId)")
     public ResponseEntity<?> uploadDocument(@RequestParam("userId") Long userId,
             @RequestParam("documentType") DocumentType documentType,
             @RequestParam("file") MultipartFile file,
@@ -32,6 +36,7 @@ public class KycController {
     }
 
     @GetMapping("/status/{userId}")
+    @PreAuthorize("@securityService.canAccessUser(#userId)")
     public ResponseEntity<?> getKycStatus(@PathVariable Long userId) {
         return requestService.getLatestByUser(userId)
                 .map(request -> ResponseEntity.ok(Map.of(

@@ -40,4 +40,8 @@ public class User extends BaseEntity {
     @Column(name = "last_login_at")
     private LocalDateTime lastLoginAt;
 
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @Builder.Default
+    private java.util.Set<UserRole> userRoles = new java.util.HashSet<>();
+
 }
