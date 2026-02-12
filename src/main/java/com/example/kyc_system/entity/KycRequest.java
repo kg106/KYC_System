@@ -40,4 +40,12 @@ public class KycRequest extends BaseEntity {
 
     @Column(name = "completed_at")
     private LocalDateTime completedAt;
+
+    @OneToMany(mappedBy = "kycRequest", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private java.util.Set<KycDocument> kycDocuments = new java.util.HashSet<>();
+
+    @OneToMany(mappedBy = "kycRequest", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private java.util.Set<KycVerificationResult> verificationResults = new java.util.HashSet<>();
 }

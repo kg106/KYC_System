@@ -15,6 +15,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.io.File;
@@ -32,113 +33,215 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@WithMockUser(roles = "ADMIN")
 class KycFlowIntegrationTest {
 
-    @Autowired
-    private MockMvc mockMvc;
+        @Autowired
+        private MockMvc mockMvc;
 
-    @Autowired
-    private UserRepository userRepository;
+        @Autowired
+        private UserRepository userRepository;
 
-    @Autowired
-    private KycRequestRepository kycRequestRepository;
+        @Autowired
+        private KycRequestRepository kycRequestRepository;
 
-    @MockBean
-    private OcrService ocrService;
+        @MockBean
+        private OcrService ocrService;
 
-    @Autowired
-    private com.example.kyc_system.repository.KycDocumentRepository kycDocumentRepository;
+        @Autowired
+        private com.example.kyc_system.repository.KycDocumentRepository kycDocumentRepository;
 
-    @Autowired
-    private com.example.kyc_system.repository.KycVerificationResultRepository kycVerificationResultRepository;
+        @Autowired
+        private com.example.kyc_system.repository.KycVerificationResultRepository kycVerificationResultRepository;
 
-    @Autowired
-    private com.example.kyc_system.repository.KycExtractedDataRepository kycExtractedDataRepository;
+        @Autowired
+        private com.example.kyc_system.repository.KycExtractedDataRepository kycExtractedDataRepository;
 
-    private User testUser;
+        @MockBean(name = "securityService")
+        private com.example.kyc_system.security.SecurityService securityService;
 
-    @BeforeEach
-    void setUp() {
-        kycVerificationResultRepository.deleteAll();
-        kycExtractedDataRepository.deleteAll();
-        kycDocumentRepository.deleteAll();
-        kycRequestRepository.deleteAll();
-        userRepository.deleteAll();
+        private User testUser;
 
-        testUser = User.builder()
-                .name("Integration Test User")
-                .email("test@example.com")
-                .mobileNumber("1234567890")
-                .dob(LocalDate.of(1990, 1, 1))
-                .passwordHash("hashedpassword")
-                .build();
-        userRepository.save(testUser);
-    }
+        @BeforeEach
+        void setUp() {
+                kycVerificationResultRepository.deleteAll();
+                kycExtractedDataRepository.deleteAll();
+                kycDocumentRepository.deleteAll();
+                kycRequestRepository.deleteAll();
+                userRepository.deleteAll();
 
-    @Test
-    void testFullKycFlow_Success() throws Exception {
-        // Mock OCR result to match user data
-        OcrResult mockOcrResult = OcrResult.builder()
-                .name("Integration Test User")
-                .dob("1990-01-01")
-                .documentNumber("ABC12345")
-                .rawResponse(new HashMap<>())
-                .build();
+                testUser = User.builder()
+                                .name("Integration Test User")
+                                .email("test@example.com")
+                                .mobileNumber("1234567890")
+                                .dob(LocalDate.of(1990, 1, 1))
+                                .passwordHash("hashedpassword")
+                                .build();
+                userRepository.save(testUser);
 
-        when(ocrService.extract(any(File.class), any(DocumentType.class))).thenReturn(mockOcrResult);
+                when(securityService.canAccessUser(any())).thenReturn(true);
+        }
 
-        MockMultipartFile file = new MockMultipartFile(
-                "file",
-                "test-doc.jpg",
-                "image/jpeg",
-                "dummy content".getBytes());
+        @Test
+        void testFullKycFlow_Success() throws Exception {
+                // Mock OCR result to match user data
+                OcrResult mockOcrResult = OcrResult.builder()
+                                .name("Integration Test User")
+                                .dob("1990-01-01")
+                                .documentNumber("ABC12345")
+                                .rawResponse(new HashMap<>())
+                                .build();
 
-        // 1. Upload Document
-        mockMvc.perform(multipart("/api/kyc/upload")
-                .file(file)
-                .param("userId", testUser.getId().toString())
-                .param("documentType", "PAN")
-                .param("documentNumber", "ABC12345"))
-                .andExpect(status().isOk());
+                when(ocrService.extract(any(File.class), any(DocumentType.class))).thenReturn(mockOcrResult);
 
-        // 2. Poll for Status (Verification is synchronous in current impl, but checking
-        // DB ensures persistence)
-        KycRequest request = kycRequestRepository.findTopByUserIdOrderByCreatedAtDesc(testUser.getId())
-                .orElseThrow(() -> new RuntimeException("Request not found"));
+                MockMultipartFile file = new MockMultipartFile(
+                                "file",
+                                "test-doc.jpg",
+                                "image/jpeg",
+                                "dummy content".getBytes());
 
-        assertEquals(KycStatus.VERIFIED.name(), request.getStatus());
-    }
+                // 1. Upload Document
+                mockMvc.perform(multipart("/api/kyc/upload")
+                                .file(file)
+                                .param("userId", testUser.getId().toString())
+                                .param("documentType", "PAN")
+                                .param("documentNumber", "ABC12345"))
+                                .andExpect(status().isOk());
 
-    @Test
-    void testFullKycFlow_Failure_DocumentNumberMismatch() throws Exception {
-        // Mock OCR result with mismatched document number
-        OcrResult mockOcrResult = OcrResult.builder()
-                .name("Integration Test User")
-                .dob("1990-01-01")
-                .documentNumber("XYZ98765") // Mismatch
-                .rawResponse(new HashMap<>())
-                .build();
+                // 2. Poll for Status (Verification is synchronous in current impl, but checking
+                // DB ensures persistence)
+                KycRequest request = kycRequestRepository.findTopByUserIdOrderByCreatedAtDesc(testUser.getId())
+                                .orElseThrow(() -> new RuntimeException("Request not found"));
 
-        when(ocrService.extract(any(File.class), any(DocumentType.class))).thenReturn(mockOcrResult);
+                assertEquals(KycStatus.VERIFIED.name(), request.getStatus());
+        }
 
-        MockMultipartFile file = new MockMultipartFile(
-                "file",
-                "test-doc.jpg",
-                "image/jpeg",
-                "dummy content".getBytes());
+        @Test
+        void testFullKycFlow_Failure_DocumentNumberMismatch() throws Exception {
+                // Mock OCR result with mismatched document number
+                OcrResult mockOcrResult = OcrResult.builder()
+                                .name("Integration Test User")
+                                .dob("1990-01-01")
+                                .documentNumber("XYZ98765") // Mismatch
+                                .rawResponse(new HashMap<>())
+                                .build();
 
-        // 1. Upload Document
-        mockMvc.perform(multipart("/api/kyc/upload")
-                .file(file)
-                .param("userId", testUser.getId().toString())
-                .param("documentType", "PAN")
-                .param("documentNumber", "ABC12345")) // User claims this
-                .andExpect(status().isOk());
+                when(ocrService.extract(any(File.class), any(DocumentType.class))).thenReturn(mockOcrResult);
 
-        // 2. Check Status
-        KycRequest request = kycRequestRepository.findTopByUserIdOrderByCreatedAtDesc(testUser.getId())
-                .orElseThrow(() -> new RuntimeException("Request not found"));
+                MockMultipartFile file = new MockMultipartFile(
+                                "file",
+                                "test-doc.jpg",
+                                "image/jpeg",
+                                "dummy content".getBytes());
 
-        assertEquals(KycStatus.FAILED.name(), request.getStatus());
-    }
+                // 1. Upload Document
+                mockMvc.perform(multipart("/api/kyc/upload")
+                                .file(file)
+                                .param("userId", testUser.getId().toString())
+                                .param("documentType", "PAN")
+                                .param("documentNumber", "ABC12345")) // User claims this
+                                .andExpect(status().isOk());
+
+                // 2. Check Status
+                KycRequest request = kycRequestRepository.findTopByUserIdOrderByCreatedAtDesc(testUser.getId())
+                                .orElseThrow(() -> new RuntimeException("Request not found"));
+
+                assertEquals(KycStatus.FAILED.name(), request.getStatus());
+        }
+
+        @Test
+        void testKyc_RejectAlreadyVerifiedDocument() throws Exception {
+                // 1. Success first
+                testFullKycFlow_Success();
+
+                // 2. Try same document again
+                MockMultipartFile file = new MockMultipartFile(
+                                "file", "test-doc.jpg", "image/jpeg", "dummy".getBytes());
+
+                mockMvc.perform(multipart("/api/kyc/upload")
+                                .file(file)
+                                .param("userId", testUser.getId().toString())
+                                .param("documentType", "PAN")
+                                .param("documentNumber", "ABC12345"))
+                                .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        void testKyc_AllowReSubmissionOfFailedRequest() throws Exception {
+                // 1. Fail first
+                testFullKycFlow_Failure_DocumentNumberMismatch();
+
+                // 2. Mock success for retry
+                OcrResult mockOcrResult = OcrResult.builder()
+                                .name("Integration Test User")
+                                .dob("1990-01-01")
+                                .documentNumber("ABC12345")
+                                .rawResponse(new HashMap<>())
+                                .build();
+                when(ocrService.extract(any(File.class), any(DocumentType.class))).thenReturn(mockOcrResult);
+
+                MockMultipartFile file = new MockMultipartFile(
+                                "file", "test-doc.jpg", "image/jpeg", "dummy".getBytes());
+
+                // 3. Re-upload
+                mockMvc.perform(multipart("/api/kyc/upload")
+                                .file(file)
+                                .param("userId", testUser.getId().toString())
+                                .param("documentType", "PAN")
+                                .param("documentNumber", "ABC12345"))
+                                .andExpect(status().isOk());
+
+                // 4. Verify request recycled (attempt number should be 2)
+                KycRequest request = kycRequestRepository.findTopByUserIdOrderByCreatedAtDesc(testUser.getId())
+                                .orElseThrow(() -> new RuntimeException("Request not found"));
+                assertEquals(2, request.getAttemptNumber());
+                assertEquals(KycStatus.VERIFIED.name(), request.getStatus());
+        }
+
+        @Test
+        void testKyc_RejectDuplicateActiveRequest() throws Exception {
+                // 1. Manually create a PROCESSING request
+                KycRequest activeRequest = new KycRequest();
+                activeRequest.setUser(testUser);
+                activeRequest.setStatus(KycStatus.PROCESSING.name());
+                activeRequest.setAttemptNumber(1);
+                activeRequest.setSubmittedAt(java.time.LocalDateTime.now());
+                kycRequestRepository.save(activeRequest);
+
+                // 2. Try to upload another document
+                MockMultipartFile file = new MockMultipartFile(
+                                "file", "test-doc.jpg", "image/jpeg", "dummy".getBytes());
+
+                mockMvc.perform(multipart("/api/kyc/upload")
+                                .file(file)
+                                .param("userId", testUser.getId().toString())
+                                .param("documentType", "AADHAAR")
+                                .param("documentNumber", "987654321012"))
+                                .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        void testKyc_RejectSixthRequestDaily() throws Exception {
+                // 1. Create 5 requests for today
+                for (int i = 1; i <= 5; i++) {
+                        KycRequest request = new KycRequest();
+                        request.setUser(testUser);
+                        request.setStatus(KycStatus.FAILED.name());
+                        request.setAttemptNumber(1);
+                        request.setSubmittedAt(java.time.LocalDateTime.now());
+                        kycRequestRepository.save(request);
+                }
+
+                // 2. Try 6th request
+                MockMultipartFile file = new MockMultipartFile(
+                                "file", "test-doc.jpg", "image/jpeg", "dummy".getBytes());
+
+                mockMvc.perform(multipart("/api/kyc/upload")
+                                .file(file)
+                                .param("userId", testUser.getId().toString())
+                                .param("documentType", "AADHAAR")
+                                .param("documentNumber", "111122223333"))
+                                .andExpect(status().isBadRequest());
+        }
+
 }

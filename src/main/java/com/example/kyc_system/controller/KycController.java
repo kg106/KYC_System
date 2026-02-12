@@ -21,12 +21,14 @@ public class KycController {
     private final KycRequestService requestService;
     private final UserService userService;
 
-    @PostMapping("/upload")
+    @PostMapping(value = "/upload", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("@securityService.canAccessUser(#userId)")
-    public ResponseEntity<?> uploadDocument(@RequestParam("userId") Long userId,
-            @RequestParam("documentType") DocumentType documentType,
-            @RequestParam("file") MultipartFile file,
-            @RequestParam("documentNumber") String documentNumber) {
+    @io.swagger.v3.oas.annotations.Operation(summary = "Upload KYC Document", description = "Upload a KYC document for verification")
+    public ResponseEntity<?> uploadDocument(
+            @io.swagger.v3.oas.annotations.Parameter(description = "User ID", required = true) @RequestParam("userId") Long userId,
+            @io.swagger.v3.oas.annotations.Parameter(description = "Document Type", required = true) @RequestParam("documentType") DocumentType documentType,
+            @io.swagger.v3.oas.annotations.Parameter(description = "KYC Document File", required = true) @RequestParam("file") MultipartFile file,
+            @io.swagger.v3.oas.annotations.Parameter(description = "Document Number", required = true) @RequestParam("documentNumber") String documentNumber) {
         try {
             orchestrationService.processKyc(userId, documentType, file, documentNumber);
             return ResponseEntity.ok(Map.of("message", "KYC processing started successfully"));

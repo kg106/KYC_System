@@ -2,7 +2,9 @@ package com.example.kyc_system.service;
 
 import com.example.kyc_system.dto.UserDTO;
 import com.example.kyc_system.entity.User;
+import com.example.kyc_system.repository.RoleRepository;
 import com.example.kyc_system.repository.UserRepository;
+import com.example.kyc_system.repository.UserRoleRepository;
 import com.example.kyc_system.util.PasswordUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -20,6 +22,12 @@ class UserServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private RoleRepository roleRepository;
+
+    @Mock
+    private UserRoleRepository userRoleRepository;
 
     @InjectMocks
     private UserServiceImpl userService;
@@ -47,8 +55,14 @@ class UserServiceTest {
                 .isActive(true)
                 .build();
 
+        com.example.kyc_system.entity.Role role = com.example.kyc_system.entity.Role.builder().id(1L).name("ROLE_USER")
+                .build();
+
         when(userRepository.findByEmail(anyString())).thenReturn(Optional.empty());
         when(userRepository.save(any(User.class))).thenReturn(savedUser);
+        when(roleRepository.findByName("ROLE_USER")).thenReturn(Optional.of(role));
+        when(userRoleRepository.save(any(com.example.kyc_system.entity.UserRole.class)))
+                .thenAnswer(i -> i.getArguments()[0]);
 
         UserDTO result = userService.createUser(userDTO);
 

@@ -44,4 +44,8 @@ public class User extends BaseEntity {
     @Builder.Default
     private java.util.Set<UserRole> userRoles = new java.util.HashSet<>();
 
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private java.util.Set<KycRequest> kycRequests = new java.util.HashSet<>();
+
 }

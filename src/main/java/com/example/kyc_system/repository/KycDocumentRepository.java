@@ -11,19 +11,20 @@ import java.util.List;
 @Repository
 public interface KycDocumentRepository extends JpaRepository<KycDocument, Long> {
 
-    List<KycDocument> findByKycRequest_Id(Long kycRequestId);
+  List<KycDocument> findByKycRequest_Id(Long kycRequestId);
 
-    boolean existsByKycRequest_IdAndDocumentType(Long kycRequestId, String documentType);
+  boolean existsByKycRequest_IdAndDocumentType(Long kycRequestId, String documentType);
 
-    @Query("""
-        SELECT d FROM KycDocument d
-        WHERE d.kycRequest.id = :kycRequestId
-          AND d.fileSize <= :maxSize
-          AND d.mimeType IN :allowedTypes
-    """)
-    List<KycDocument> findValidDocuments(@Param("kycRequestId") Long kycRequestId,
-                                         @Param("maxSize") Long maxSize,
-                                         @Param("allowedTypes") List<String> allowedTypes);
+  @Query("""
+          SELECT d FROM KycDocument d
+          WHERE d.kycRequest.id = :kycRequestId
+            AND d.fileSize <= :maxSize
+            AND d.mimeType IN :allowedTypes
+      """)
+  List<KycDocument> findValidDocuments(@Param("kycRequestId") Long kycRequestId,
+      @Param("maxSize") Long maxSize,
+      @Param("allowedTypes") List<String> allowedTypes);
+
+  boolean existsByKycRequest_User_IdAndDocumentTypeAndDocumentNumberAndKycRequest_Status(
+      Long userId, String documentType, String documentNumber, String status);
 }
-
-

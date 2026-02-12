@@ -53,6 +53,7 @@ class KycVerificationServiceImplTest {
                 .id(1L)
                 .kycRequest(request)
                 .documentNumber("DOC12345")
+                .documentType("AADHAAR")
                 .build();
 
         extractedData = KycExtractedData.builder()

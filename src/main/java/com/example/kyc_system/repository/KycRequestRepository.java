@@ -19,6 +19,8 @@ public interface KycRequestRepository extends JpaRepository<KycRequest, Long> {
 
     Optional<KycRequest> findTopByUserIdOrderByCreatedAtDesc(Long userId);
 
+    long countByUserIdAndSubmittedAtGreaterThanEqual(Long userId, java.time.LocalDateTime startOfDay);
+
     List<KycRequest> findByStatus(String status);
 
     @Modifying

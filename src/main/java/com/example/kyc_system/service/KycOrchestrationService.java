@@ -29,6 +29,11 @@ public class KycOrchestrationService {
                         MultipartFile file,
                         String documentNumber) {
 
+                if (documentService.isVerified(userId, documentType, documentNumber)) {
+                        throw new RuntimeException("Your " + documentType
+                                        + " is already verified. No further action is required.");
+                }
+
                 User user = userService.getActiveUser(userId);
 
                 KycRequest request = requestService.createOrReuse(userId);

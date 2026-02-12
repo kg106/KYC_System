@@ -46,4 +46,12 @@ public class KycDocument extends BaseEntity {
     @Builder.Default
     @Column(name = "is_encrypted", nullable = false)
     private Boolean encrypted = false;
+
+    @OneToMany(mappedBy = "kycDocument", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private java.util.Set<KycExtractedData> extractedData = new java.util.HashSet<>();
+
+    @OneToMany(mappedBy = "kycDocument", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private java.util.Set<KycDocumentVerification> verifications = new java.util.HashSet<>();
 }

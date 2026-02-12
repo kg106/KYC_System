@@ -21,24 +21,41 @@ public class KycRequestServiceImpl implements KycRequestService {
 
     @Override
     public KycRequest createOrReuse(Long userId) {
+        LocalDateTime startOfDay = LocalDateTime.now().with(java.time.LocalTime.MIN);
+        long dailyCount = repository.countByUserIdAndSubmittedAtGreaterThanEqual(userId, startOfDay);
 
-        return repository.findTopByUserIdOrderByCreatedAtDesc(userId)
-                .filter(r -> r.getStatus().equals(KycStatus.FAILED.name()))
-                .map(r -> {
-                    r.setAttemptNumber(r.getAttemptNumber() + 1);
-                    r.setStatus(KycStatus.SUBMITTED.name());
-                    r.setSubmittedAt(LocalDateTime.now());
-                    return r;
-                })
-                .orElseGet(() -> {
-                    User user = userService.getActiveUser(userId);
-                    KycRequest newRequest = new KycRequest();
-                    newRequest.setUser(user);
-                    newRequest.setStatus(KycStatus.SUBMITTED.name());
-                    newRequest.setAttemptNumber(1);
-                    newRequest.setSubmittedAt(LocalDateTime.now());
-                    return repository.save(newRequest);
-                });
+        if (dailyCount >= 5) {
+            throw new RuntimeException("Daily KYC request limit reached. You can only make 5 requests per day.");
+        }
+
+        Optional<KycRequest> latestRequest = repository.findTopByUserIdOrderByCreatedAtDesc(userId);
+
+        if (latestRequest.isPresent()) {
+            KycRequest request = latestRequest.get();
+            String status = request.getStatus();
+
+            if (status.equals(KycStatus.PENDING.name()) ||
+                    status.equals(KycStatus.SUBMITTED.name()) ||
+                    status.equals(KycStatus.PROCESSING.name())) {
+                throw new RuntimeException(
+                        "Only one KYC request can be processed at a time. Please wait until your current request is completed.");
+            }
+
+            if (status.equals(KycStatus.FAILED.name())) {
+                request.setAttemptNumber(request.getAttemptNumber() + 1);
+                request.setStatus(KycStatus.SUBMITTED.name());
+                request.setSubmittedAt(LocalDateTime.now());
+                return request;
+            }
+        }
+
+        User user = userService.getActiveUser(userId);
+        KycRequest newRequest = new KycRequest();
+        newRequest.setUser(user);
+        newRequest.setStatus(KycStatus.SUBMITTED.name());
+        newRequest.setAttemptNumber(1);
+        newRequest.setSubmittedAt(LocalDateTime.now());
+        return repository.save(newRequest);
     }
 
     @Override

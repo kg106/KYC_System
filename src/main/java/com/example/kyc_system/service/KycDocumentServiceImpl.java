@@ -56,6 +56,12 @@ public class KycDocumentServiceImpl implements KycDocumentService {
         return repository.save(doc);
     }
 
+    @Override
+    public boolean isVerified(Long userId, DocumentType documentType, String documentNumber) {
+        return repository.existsByKycRequest_User_IdAndDocumentTypeAndDocumentNumberAndKycRequest_Status(
+                userId, documentType.name(), documentNumber, "VERIFIED");
+    }
+
     private String store(MultipartFile file) {
         try {
             String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
