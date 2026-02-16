@@ -18,6 +18,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -31,6 +32,15 @@ class UserControllerTest {
 
     @MockBean
     private UserService userService;
+
+    @MockBean
+    private com.example.kyc_system.security.JwtTokenProvider jwtTokenProvider;
+
+    @MockBean
+    private com.example.kyc_system.security.CustomAuthenticationEntryPoint authenticationEntryPoint;
+
+    @MockBean
+    private com.example.kyc_system.security.CustomAccessDeniedHandler accessDeniedHandler;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -121,5 +131,21 @@ class UserControllerTest {
         mockMvc.perform(post("/api/users/1/forgot-password"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").value("New Password: newPassword123"));
+    }
+
+    @Test
+    void getUserById_ShouldReturnNotFound_WhenUserDoesNotExist() throws Exception {
+        given(userService.getUserById(999L)).willThrow(new RuntimeException("User not found"));
+
+        mockMvc.perform(get("/api/users/999"))
+                .andExpect(status().isInternalServerError());
+    }
+
+    @Test
+    void deleteUser_ShouldReturnNotFound_WhenUserDoesNotExist() throws Exception {
+        doThrow(new RuntimeException("User not found")).when(userService).deleteUser(999L);
+
+        mockMvc.perform(delete("/api/users/999"))
+                .andExpect(status().isInternalServerError());
     }
 }

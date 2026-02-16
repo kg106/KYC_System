@@ -75,7 +75,7 @@ class KycVerificationServiceImplTest {
         assertEquals(KycStatus.VERIFIED.name(), result.getFinalStatus());
         assertTrue(result.getDobMatch());
         assertTrue(result.getDocumentNumberMatch());
-        assertEquals(BigDecimal.valueOf(100), result.getNameMatchScore());
+        assertEquals(0, BigDecimal.valueOf(100).compareTo(result.getNameMatchScore()));
     }
 
     @Test

@@ -34,4 +34,21 @@ public class SecurityService {
             return false;
         }
     }
+
+    public boolean isSelf(Long userId) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return false;
+        }
+
+        // Check if current user email matches target user email
+        // Unlike canAccessUser, we don't automatically grant access to ADMIN here
+        String currentEmail = authentication.getName();
+        try {
+            UserDTO targetUser = userService.getUserById(userId);
+            return targetUser.getEmail().equals(currentEmail);
+        } catch (Exception e) {
+            return false;
+        }
+    }
 }

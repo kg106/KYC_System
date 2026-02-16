@@ -36,7 +36,7 @@ public class DataInitializer implements CommandLineRunner {
                     .name("System Admin")
                     .email("admin@kyc.com")
                     .mobileNumber("0000000000")
-                    .passwordHash(passwordEncoder.encode("admin123"))
+                    .passwordHash(passwordEncoder.encode("Password@123"))
                     .dob(LocalDate.of(1990, 1, 1))
                     .isActive(true)
                     .build();

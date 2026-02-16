@@ -13,6 +13,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Optional;
@@ -30,59 +31,76 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc(addFilters = false)
 class KycControllerTest {
 
-    @Autowired
-    private MockMvc mockMvc;
+        @Autowired
+        private MockMvc mockMvc;
 
-    @MockBean
-    private KycOrchestrationService orchestrationService;
+        @MockBean
+        private KycOrchestrationService orchestrationService;
 
-    @MockBean
-    private KycRequestService requestService;
+        @MockBean
+        private KycRequestService requestService;
 
-    @MockBean
-    private UserService userService;
+        @MockBean
+        private UserService userService;
 
-    @Test
-    void uploadDocument_Success() throws Exception {
-        MockMultipartFile file = new MockMultipartFile(
-                "file",
-                "test.jpg",
-                MediaType.IMAGE_JPEG_VALUE,
-                "test image content".getBytes());
+        @MockBean
+        private com.example.kyc_system.security.JwtTokenProvider jwtTokenProvider;
 
-        doNothing().when(orchestrationService).processKyc(
-                eq(1L),
-                eq(DocumentType.AADHAAR),
-                any(),
-                eq("1234567890"));
+        @MockBean
+        private com.example.kyc_system.security.CustomAuthenticationEntryPoint authenticationEntryPoint;
 
-        mockMvc.perform(multipart("/api/kyc/upload")
-                .file(file)
-                .param("userId", "1")
-                .param("documentType", "AADHAAR")
-                .param("documentNumber", "1234567890"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("KYC processing started successfully"));
-    }
+        @MockBean
+        private com.example.kyc_system.security.CustomAccessDeniedHandler accessDeniedHandler;
 
-    @Test
-    void getKycStatus_Success() throws Exception {
-        KycRequest request = new KycRequest();
-        request.setId(1L);
-        request.setStatus(KycStatus.VERIFIED.name());
+        @MockBean
+        private com.example.kyc_system.security.SecurityService securityService;
 
-        given(requestService.getLatestByUser(1L)).willReturn(Optional.of(request));
+        @Test
+        void uploadDocument_Success() throws Exception {
+                MockMultipartFile file = new MockMultipartFile(
+                                "file",
+                                "test.jpg",
+                                MediaType.IMAGE_JPEG_VALUE,
+                                "test image content".getBytes());
 
-        mockMvc.perform(get("/api/kyc/status/1"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("VERIFIED"));
-    }
+                doNothing().when(orchestrationService).processKyc(
+                                eq(1L),
+                                eq(DocumentType.AADHAAR),
+                                any(),
+                                eq("1234567890"));
 
-    @Test
-    void getKycStatus_NotFound() throws Exception {
-        given(requestService.getLatestByUser(1L)).willReturn(Optional.empty());
+                mockMvc.perform(multipart("/api/kyc/upload")
+                                .file(file)
+                                .param("userId", "1")
+                                .param("documentType", "AADHAAR")
+                                .param("documentNumber", "1234567890"))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.message").value("KYC processing started successfully"));
+        }
 
-        mockMvc.perform(get("/api/kyc/status/1"))
-                .andExpect(status().isNotFound());
-    }
+        @Test
+        @WithMockUser
+        void getKycStatus_Success() throws Exception {
+                KycRequest request = new KycRequest();
+                request.setId(1L);
+                request.setStatus(KycStatus.VERIFIED.name());
+                request.setFailureReason(null);
+                request.setAttemptNumber(1);
+                request.setCreatedAt(java.time.LocalDateTime.now());
+
+                given(requestService.getLatestByUser(1L)).willReturn(Optional.of(request));
+                given(securityService.canAccessUser(1L)).willReturn(true);
+
+                mockMvc.perform(get("/api/kyc/status/1"))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.status").value("VERIFIED"));
+        }
+
+        @Test
+        void getKycStatus_NotFound() throws Exception {
+                given(requestService.getLatestByUser(1L)).willReturn(Optional.empty());
+
+                mockMvc.perform(get("/api/kyc/status/1"))
+                                .andExpect(status().isNotFound());
+        }
 }

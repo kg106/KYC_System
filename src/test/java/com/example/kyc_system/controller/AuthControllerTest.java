@@ -29,6 +29,15 @@ class AuthControllerTest {
     @MockBean
     private UserService userService;
 
+    @MockBean
+    private com.example.kyc_system.security.JwtTokenProvider jwtTokenProvider;
+
+    @MockBean
+    private com.example.kyc_system.security.CustomAuthenticationEntryPoint authenticationEntryPoint;
+
+    @MockBean
+    private com.example.kyc_system.security.CustomAccessDeniedHandler accessDeniedHandler;
+
     @Autowired
     private ObjectMapper objectMapper;
 
