@@ -2,6 +2,7 @@ package com.example.kyc_system.service;
 
 import com.example.kyc_system.dto.LoginDTO;
 import com.example.kyc_system.dto.UserDTO;
+import com.example.kyc_system.dto.UserUpdateDTO;
 import com.example.kyc_system.entity.User;
 import com.example.kyc_system.repository.RoleRepository;
 import com.example.kyc_system.repository.UserRepository;
@@ -96,7 +97,7 @@ class UserServiceTest {
                                 .passwordHash("oldHash")
                                 .build();
 
-                UserDTO updateDTO = UserDTO.builder()
+                UserUpdateDTO updateDTO = UserUpdateDTO.builder()
                                 .name("New Name")
                                 .email("new@example.com")
                                 .mobileNumber("9876543210")
@@ -142,7 +143,7 @@ class UserServiceTest {
         @Test
         void updateUser_ShouldThrowException_WhenUserDoesNotExist() {
                 Long userId = 1L;
-                UserDTO updateDTO = UserDTO.builder().name("New").build();
+                UserUpdateDTO updateDTO = UserUpdateDTO.builder().name("New").build();
                 when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
                 assertThrows(RuntimeException.class, () -> userService.updateUser(userId, updateDTO));

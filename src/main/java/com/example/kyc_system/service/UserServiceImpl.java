@@ -2,6 +2,7 @@ package com.example.kyc_system.service;
 
 import com.example.kyc_system.dto.LoginDTO;
 import com.example.kyc_system.dto.UserDTO;
+import com.example.kyc_system.dto.UserUpdateDTO;
 import com.example.kyc_system.entity.User;
 import com.example.kyc_system.entity.UserRole;
 import com.example.kyc_system.repository.RoleRepository;
@@ -84,7 +85,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public UserDTO updateUser(Long id, UserDTO userDTO) {
+    public UserDTO updateUser(Long id, UserUpdateDTO userDTO) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
 

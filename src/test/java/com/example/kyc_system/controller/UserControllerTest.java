@@ -1,6 +1,7 @@
 package com.example.kyc_system.controller;
 
 import com.example.kyc_system.dto.UserDTO;
+import com.example.kyc_system.dto.UserUpdateDTO;
 import com.example.kyc_system.service.UserService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -83,11 +84,10 @@ class UserControllerTest {
 
     @Test
     void updateUser_Success() throws Exception {
-        UserDTO updateDTO = new UserDTO();
+        UserUpdateDTO updateDTO = new UserUpdateDTO();
         updateDTO.setName("Updated User");
         updateDTO.setEmail("updated@example.com");
         updateDTO.setMobileNumber("1234567890");
-        updateDTO.setPassword("Password@123");
 
         UserDTO updatedUser = new UserDTO();
         updatedUser.setId(1L);
@@ -95,7 +95,7 @@ class UserControllerTest {
         updatedUser.setEmail("updated@example.com");
         updatedUser.setMobileNumber("1234567890");
 
-        given(userService.updateUser(eq(1L), any(UserDTO.class))).willReturn(updatedUser);
+        given(userService.updateUser(eq(1L), any(UserUpdateDTO.class))).willReturn(updatedUser);
 
         mockMvc.perform(patch("/api/users/1")
                 .contentType(MediaType.APPLICATION_JSON)

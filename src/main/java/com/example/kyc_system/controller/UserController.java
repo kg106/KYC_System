@@ -40,7 +40,7 @@ public class UserController {
     @PreAuthorize("@securityService.canAccessUser(#userId)")
     @io.swagger.v3.oas.annotations.Operation(summary = "Update User Profile", description = "Performs a partial update of a user's profile. Available to self or ADMIN.")
     public ResponseEntity<UserDTO> updateUser(@PathVariable("id") Long userId,
-            @RequestBody UserDTO updatedUser) {
+            @jakarta.validation.Valid @RequestBody com.example.kyc_system.dto.UserUpdateDTO updatedUser) {
         UserDTO userDto = userService.updateUser(userId, updatedUser);
         return new ResponseEntity<>(userDto, HttpStatus.OK);
     }

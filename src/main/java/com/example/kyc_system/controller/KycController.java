@@ -44,14 +44,21 @@ public class KycController {
     public ResponseEntity<?> getKycStatus(@PathVariable Long userId) {
         return requestService.getLatestByUser(userId)
                 .map(request -> ResponseEntity.ok(formatKycResponse(request)))
-                .orElse(ResponseEntity.notFound().build());
+                .orElse(ResponseEntity.status(org.springframework.http.HttpStatus.NOT_FOUND)
+                        .body(java.util.Map.of("message", "No KYC request found for this user")));
     }
 
     @GetMapping("/status/all/{userId}")
     @PreAuthorize("@securityService.canAccessUser(#userId)")
     @io.swagger.v3.oas.annotations.Operation(summary = "Get All KYC Requests Status", description = "Retrieves all KYC request history for a specific user. Available to self or ADMIN.")
-    public ResponseEntity<java.util.List<?>> getAllKycStatus(@PathVariable Long userId) {
+    public ResponseEntity<?> getAllKycStatus(@PathVariable Long userId) {
         java.util.List<com.example.kyc_system.entity.KycRequest> requests = requestService.getAllByUser(userId);
+
+        if (requests.isEmpty()) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.NOT_FOUND)
+                    .body(java.util.Map.of("message", "No KYC history found for this user"));
+        }
+
         java.util.List<java.util.Map<String, Object>> response = requests.stream()
                 .map(this::formatKycResponse)
                 .collect(java.util.stream.Collectors.toList());
