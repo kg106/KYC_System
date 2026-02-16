@@ -65,12 +65,14 @@ class AuthControllerTest {
         UserDTO userDTO = new UserDTO();
         userDTO.setName("Test User");
         userDTO.setEmail("test@example.com");
-        userDTO.setPassword("password");
+        userDTO.setMobileNumber("1234567890");
+        userDTO.setPassword("Strong@123");
 
         UserDTO savedUser = new UserDTO();
         savedUser.setId(1L);
         savedUser.setName("Test User");
         savedUser.setEmail("test@example.com");
+        savedUser.setMobileNumber("1234567890");
 
         given(userService.createUser(any(UserDTO.class))).willReturn(savedUser);
 

@@ -46,35 +46,18 @@ class UserControllerTest {
     private ObjectMapper objectMapper;
 
     @Test
-    void createUser_Success() throws Exception {
-        UserDTO userDTO = new UserDTO();
-        userDTO.setName("New User");
-        userDTO.setEmail("new@example.com");
-        userDTO.setPassword("password");
-
-        UserDTO createdUser = new UserDTO();
-        createdUser.setId(1L);
-        createdUser.setName("New User");
-        createdUser.setEmail("new@example.com");
-
-        given(userService.createUser(any(UserDTO.class))).willReturn(createdUser);
-
-        mockMvc.perform(post("/api/users")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(userDTO)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.name").value("New User"));
-    }
-
-    @Test
     void getAllUsers_Success() throws Exception {
         UserDTO user1 = new UserDTO();
         user1.setId(1L);
-        user1.setName("User 1");
+        user1.setName("User One");
+        user1.setEmail("user1@example.com");
+        user1.setMobileNumber("1234567890");
 
         UserDTO user2 = new UserDTO();
         user2.setId(2L);
-        user2.setName("User 2");
+        user2.setName("User Two");
+        user2.setEmail("user2@example.com");
+        user2.setMobileNumber("0987654321");
 
         List<UserDTO> users = Arrays.asList(user1, user2);
 
@@ -102,10 +85,15 @@ class UserControllerTest {
     void updateUser_Success() throws Exception {
         UserDTO updateDTO = new UserDTO();
         updateDTO.setName("Updated User");
+        updateDTO.setEmail("updated@example.com");
+        updateDTO.setMobileNumber("1234567890");
+        updateDTO.setPassword("Password@123");
 
         UserDTO updatedUser = new UserDTO();
         updatedUser.setId(1L);
         updatedUser.setName("Updated User");
+        updatedUser.setEmail("updated@example.com");
+        updatedUser.setMobileNumber("1234567890");
 
         given(userService.updateUser(eq(1L), any(UserDTO.class))).willReturn(updatedUser);
 
