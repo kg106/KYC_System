@@ -6,6 +6,9 @@ import com.example.kyc_system.repository.UserRepository;
 import com.example.kyc_system.util.PasswordUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +25,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class PasswordResetServiceImpl implements PasswordResetService {
 
     private final UserRepository userRepository;
+    private final JavaMailSender mailSender;
 
     // In-memory storage for tokens and rate limiting
     private final Map<String, TokenInfo> tokenStorage = new ConcurrentHashMap<>();
@@ -56,10 +60,12 @@ public class PasswordResetServiceImpl implements PasswordResetService {
             String token = UUID.randomUUID().toString().substring(0, 6).toUpperCase();
             tokenStorage.put(email, new TokenInfo(token, LocalDateTime.now().plusMinutes(15)));
 
-            // Mock email sending
+            // Send real email in the background
+            sendEmail(email, token);
+
+            // Keep logging for debugging purposes
             log.info("**************************************************");
             log.info("PASSWORD RESET TOKEN FOR {}: {}", email, token);
-            log.info("Token will expire in 15 minutes.");
             log.info("**************************************************");
 
             incrementAttempt(email);
@@ -67,6 +73,22 @@ public class PasswordResetServiceImpl implements PasswordResetService {
 
         // Always return the same message for security reasons
         return "If account exist, then email has been sent.";
+    }
+
+    @Async
+    protected void sendEmail(String to, String token) {
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setTo(to);
+            message.setSubject("Password Reset Token - KYC System");
+            message.setText("Your password reset token is: " + token + "\n\n" +
+                    "This token will expire in 15 minutes.\n" +
+                    "If you did not request this, please ignore this email.");
+            mailSender.send(message);
+            log.info("Password reset email sent successfully to: {}", to);
+        } catch (Exception e) {
+            log.error("Failed to send password reset email to {}: {}", to, e.getMessage());
+        }
     }
 
     @Override
