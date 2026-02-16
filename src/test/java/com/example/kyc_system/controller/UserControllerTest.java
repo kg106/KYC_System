@@ -97,7 +97,7 @@ class UserControllerTest {
 
         given(userService.updateUser(eq(1L), any(UserDTO.class))).willReturn(updatedUser);
 
-        mockMvc.perform(put("/api/users/1")
+        mockMvc.perform(patch("/api/users/1")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(updateDTO)))
                 .andExpect(status().isOk())

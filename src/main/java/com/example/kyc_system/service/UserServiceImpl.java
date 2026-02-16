@@ -89,15 +89,23 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
 
-        user.setName(userDTO.getName());
-        user.setEmail(userDTO.getEmail());
-        user.setMobileNumber(userDTO.getMobileNumber());
+        if (userDTO.getName() != null) {
+            user.setName(userDTO.getName());
+        }
+        if (userDTO.getEmail() != null) {
+            user.setEmail(userDTO.getEmail());
+        }
+        if (userDTO.getMobileNumber() != null) {
+            user.setMobileNumber(userDTO.getMobileNumber());
+        }
         if (userDTO.getDob() != null) {
             user.setDob(userDTO.getDob());
         }
         if (userDTO.getIsActive() != null) {
             user.setIsActive(userDTO.getIsActive());
         }
+
+        // Note: Password update is explicitly excluded from this method as requested.
 
         User updatedUser = userRepository.save(user);
         return mapToDTO(updatedUser);

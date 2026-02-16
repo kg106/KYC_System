@@ -2,7 +2,6 @@ package com.example.kyc_system.controller;
 
 import com.example.kyc_system.dto.UserDTO;
 import com.example.kyc_system.service.UserService;
-import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -34,10 +33,10 @@ public class UserController {
         return new ResponseEntity<>(userDto, HttpStatus.OK);
     }
 
-    @PutMapping("{id}")
+    @PatchMapping("{id}")
     @PreAuthorize("@securityService.canAccessUser(#userId)")
     public ResponseEntity<UserDTO> updateUser(@PathVariable("id") Long userId,
-            @Valid @RequestBody UserDTO updatedUser) {
+            @RequestBody UserDTO updatedUser) {
         UserDTO userDto = userService.updateUser(userId, updatedUser);
         return new ResponseEntity<>(userDto, HttpStatus.OK);
     }
