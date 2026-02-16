@@ -167,32 +167,6 @@ class UserServiceTest {
         }
 
         @Test
-        void forgotPassword_ShouldThrowException_WhenUserDoesNotExist() {
-                Long userId = 1L;
-                when(userRepository.findById(userId)).thenReturn(Optional.empty());
-
-                assertThrows(RuntimeException.class, () -> userService.forgotPassword(userId));
-        }
-
-        @Test
-        void forgotPassword_ShouldGenerateNewPassword() {
-                Long userId = 1L;
-                User existingUser = User.builder()
-                                .id(userId)
-                                .passwordHash("oldHash")
-                                .build();
-
-                when(userRepository.findById(userId)).thenReturn(Optional.of(existingUser));
-                when(userRepository.save(any(User.class))).thenReturn(existingUser);
-
-                String newPassword = userService.forgotPassword(userId);
-
-                assertNotNull(newPassword);
-                assertNotEquals("oldHash", existingUser.getPasswordHash());
-                assertTrue(PasswordUtil.checkPassword(newPassword, existingUser.getPasswordHash()));
-        }
-
-        @Test
         void getActiveUser_ShouldReturnUser_WhenUserExists() {
                 Long userId = 1L;
                 User user = User.builder().id(userId).build();

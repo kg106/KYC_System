@@ -114,15 +114,6 @@ class UserControllerTest {
     }
 
     @Test
-    void forgotPassword_Success() throws Exception {
-        given(userService.forgotPassword(1L)).willReturn("newPassword123");
-
-        mockMvc.perform(post("/api/users/1/forgot-password"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$").value("New Password: newPassword123"));
-    }
-
-    @Test
     void getUserById_ShouldReturnNotFound_WhenUserDoesNotExist() throws Exception {
         given(userService.getUserById(999L)).willThrow(new RuntimeException("User not found"));
 

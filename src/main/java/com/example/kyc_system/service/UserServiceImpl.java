@@ -18,7 +18,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -118,22 +117,6 @@ public class UserServiceImpl implements UserService {
             throw new RuntimeException("User not found with id: " + id);
         }
         userRepository.deleteById(id);
-    }
-
-    @Override
-    @Transactional
-    public String forgotPassword(Long id) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
-
-        // Generate a random password (simple implementation for demo)
-        String newPassword = UUID.randomUUID().toString().substring(0, 8);
-        String hashedPassword = PasswordUtil.hashPassword(newPassword);
-
-        user.setPasswordHash(hashedPassword);
-        userRepository.save(user);
-
-        return newPassword;
     }
 
     @Override

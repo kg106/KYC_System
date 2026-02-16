@@ -53,11 +53,4 @@ public class UserController {
         return ResponseEntity.ok("User deleted successfully");
     }
 
-    @PostMapping("/{id}/forgot-password")
-    @PreAuthorize("@securityService.isSelf(#userId)")
-    @io.swagger.v3.oas.annotations.Operation(summary = "Forgot Password", description = "Triggers a password reset mechanism for the user.")
-    public ResponseEntity<String> forgotPassword(@PathVariable("id") Long userId) {
-        String newPassword = userService.forgotPassword(userId);
-        return ResponseEntity.ok("New Password: " + newPassword);
-    }
 }
