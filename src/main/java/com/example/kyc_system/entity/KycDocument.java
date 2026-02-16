@@ -1,6 +1,7 @@
 package com.example.kyc_system.entity;
 
 import jakarta.persistence.*;
+import com.example.kyc_system.converter.KycEncryptionConverter;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -25,6 +26,7 @@ public class KycDocument extends BaseEntity {
     @Column(name = "document_type", length = 20, nullable = false)
     private String documentType;
 
+    @Convert(converter = KycEncryptionConverter.class)
     @Column(name = "document_number")
     private String documentNumber;
 

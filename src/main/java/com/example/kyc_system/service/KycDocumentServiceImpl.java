@@ -50,7 +50,7 @@ public class KycDocumentServiceImpl implements KycDocumentService {
                 .mimeType(file.getContentType())
                 .fileSize(file.getSize())
                 .uploadedAt(LocalDateTime.now())
-                .encrypted(false)
+                .encrypted(true)
                 .build();
 
         return repository.save(doc);

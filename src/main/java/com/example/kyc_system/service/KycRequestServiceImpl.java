@@ -4,7 +4,7 @@ import com.example.kyc_system.entity.KycRequest;
 import com.example.kyc_system.entity.User;
 import com.example.kyc_system.enums.KycStatus;
 import com.example.kyc_system.repository.KycRequestRepository;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -66,12 +66,22 @@ public class KycRequestServiceImpl implements KycRequestService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Optional<KycRequest> getLatestByUser(Long userId) {
-        return repository.findTopByUserIdOrderByCreatedAtDesc(userId);
+        Optional<KycRequest> request = repository.findTopByUserIdOrderByCreatedAtDesc(userId);
+        request.ifPresent(r -> {
+            r.getKycDocuments().forEach(doc -> doc.getExtractedData().size());
+        });
+        return request;
     }
 
     @Override
+    @Transactional(readOnly = true)
     public java.util.List<KycRequest> getAllByUser(Long userId) {
-        return repository.findByUserId(userId);
+        java.util.List<KycRequest> requests = repository.findByUserId(userId);
+        requests.forEach(r -> {
+            r.getKycDocuments().forEach(doc -> doc.getExtractedData().size());
+        });
+        return requests;
     }
 }

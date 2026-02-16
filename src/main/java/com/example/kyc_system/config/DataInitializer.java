@@ -28,7 +28,7 @@ public class DataInitializer implements CommandLineRunner {
     public void run(String... args) throws Exception {
         // Initialize Roles
         Role adminRole = createRoleIfNotFound("ROLE_ADMIN");
-        Role userRole = createRoleIfNotFound("ROLE_USER");
+        // Role userRole = createRoleIfNotFound("ROLE_USER");
 
         // Initialize Admin User
         if (userRepository.findByEmail("admin@kyc.com").isEmpty()) {

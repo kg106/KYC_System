@@ -3,7 +3,7 @@ package com.example.kyc_system.controller;
 import com.example.kyc_system.enums.DocumentType;
 import com.example.kyc_system.service.KycOrchestrationService;
 import com.example.kyc_system.service.KycRequestService;
-import com.example.kyc_system.service.UserService;
+//import com.example.kyc_system.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -20,7 +20,7 @@ public class KycController {
 
     private final KycOrchestrationService orchestrationService;
     private final KycRequestService requestService;
-    private final UserService userService;
+    // private final UserService userService;
 
     @PostMapping(value = "/upload", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("@securityService.canAccessUser(#userId)")
@@ -43,12 +43,7 @@ public class KycController {
     @io.swagger.v3.oas.annotations.Operation(summary = "Get KYC Status", description = "Retrieves the latest KYC request status for a specific user")
     public ResponseEntity<?> getKycStatus(@PathVariable Long userId) {
         return requestService.getLatestByUser(userId)
-                .map(request -> ResponseEntity.ok(Map.of(
-                        "requestId", request.getId(),
-                        "status", request.getStatus(),
-                        "failureReason", request.getFailureReason(),
-                        "attemptNumber", request.getAttemptNumber(),
-                        "submittedAt", request.getCreatedAt())))
+                .map(request -> ResponseEntity.ok(formatKycResponse(request)))
                 .orElse(ResponseEntity.notFound().build());
     }
 
@@ -58,16 +53,38 @@ public class KycController {
     public ResponseEntity<java.util.List<?>> getAllKycStatus(@PathVariable Long userId) {
         java.util.List<com.example.kyc_system.entity.KycRequest> requests = requestService.getAllByUser(userId);
         java.util.List<java.util.Map<String, Object>> response = requests.stream()
-                .map(request -> {
-                    java.util.Map<String, Object> map = new java.util.HashMap<>();
-                    map.put("requestId", request.getId());
-                    map.put("status", request.getStatus());
-                    map.put("failureReason", request.getFailureReason() != null ? request.getFailureReason() : "");
-                    map.put("attemptNumber", request.getAttemptNumber());
-                    map.put("submittedAt", request.getCreatedAt());
-                    return map;
-                })
+                .map(this::formatKycResponse)
                 .collect(java.util.stream.Collectors.toList());
         return ResponseEntity.ok(response);
+    }
+
+    private java.util.Map<String, Object> formatKycResponse(com.example.kyc_system.entity.KycRequest request) {
+        java.util.Map<String, Object> response = new java.util.HashMap<>();
+        response.put("requestId", request.getId());
+        response.put("status", request.getStatus());
+        response.put("failureReason", request.getFailureReason() != null ? request.getFailureReason() : "");
+        response.put("attemptNumber", request.getAttemptNumber());
+        response.put("submittedAt", request.getCreatedAt());
+
+        // Get extracted data from documents
+        if (request.getKycDocuments() != null && !request.getKycDocuments().isEmpty()) {
+            com.example.kyc_system.entity.KycDocument doc = request.getKycDocuments().iterator().next();
+            response.put("documentType", doc.getDocumentType());
+
+            if (doc.getExtractedData() != null && !doc.getExtractedData().isEmpty()) {
+                com.example.kyc_system.entity.KycExtractedData data = doc.getExtractedData().iterator().next();
+                response.put("extractedName", data.getExtractedName());
+                response.put("extractedDob", data.getExtractedDob());
+
+                String docNumber = data.getExtractedDocumentNumber();
+                // Mask if Admin
+                if (org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication()
+                        .getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"))) {
+                    docNumber = com.example.kyc_system.util.MaskingUtil.maskDocumentNumber(docNumber);
+                }
+                response.put("extractedDocumentNumber", docNumber);
+            }
+        }
+        return response;
     }
 }

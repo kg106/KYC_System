@@ -1,6 +1,7 @@
 package com.example.kyc_system.entity;
 
 import jakarta.persistence.*;
+import com.example.kyc_system.converter.KycEncryptionConverter;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -33,6 +34,7 @@ public class KycExtractedData {
     @Column(name = "extracted_dob")
     private LocalDate extractedDob;
 
+    @Convert(converter = KycEncryptionConverter.class)
     @Column(name = "extracted_document_number")
     private String extractedDocumentNumber;
 
