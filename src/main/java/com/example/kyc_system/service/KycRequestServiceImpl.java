@@ -69,4 +69,9 @@ public class KycRequestServiceImpl implements KycRequestService {
     public Optional<KycRequest> getLatestByUser(Long userId) {
         return repository.findTopByUserIdOrderByCreatedAtDesc(userId);
     }
+
+    @Override
+    public java.util.List<KycRequest> getAllByUser(Long userId) {
+        return repository.findByUserId(userId);
+    }
 }

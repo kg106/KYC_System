@@ -15,12 +15,14 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
+@io.swagger.v3.oas.annotations.tags.Tag(name = "Authentication", description = "Endpoints for user registration and login")
 public class AuthController {
 
     private final UserService userService;
 
     // Build Login REST API
     @PostMapping("/login")
+    @io.swagger.v3.oas.annotations.Operation(summary = "User Login", description = "Authenticates user and returns a JWT access token")
     public ResponseEntity<JwtAuthResponse> login(@jakarta.validation.Valid @RequestBody LoginDTO loginDTO) {
         String token = userService.login(loginDTO);
 
@@ -32,6 +34,7 @@ public class AuthController {
 
     // Build Register REST API
     @PostMapping("/register")
+    @io.swagger.v3.oas.annotations.Operation(summary = "User Registration", description = "Creates a new user account")
     public ResponseEntity<UserDTO> register(@jakarta.validation.Valid @RequestBody UserDTO userDTO) {
         UserDTO savedUser = userService.createUser(userDTO);
         return new ResponseEntity<>(savedUser, HttpStatus.CREATED);

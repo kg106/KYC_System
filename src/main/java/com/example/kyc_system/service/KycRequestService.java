@@ -11,4 +11,6 @@ public interface KycRequestService {
     void updateStatus(Long requestId, KycStatus status);
 
     Optional<KycRequest> getLatestByUser(Long userId);
+
+    java.util.List<KycRequest> getAllByUser(Long userId);
 }

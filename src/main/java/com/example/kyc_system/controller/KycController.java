@@ -15,6 +15,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/kyc")
 @RequiredArgsConstructor
+@io.swagger.v3.oas.annotations.tags.Tag(name = "KYC Operations", description = "Endpoints for KYC document upload and status verification")
 public class KycController {
 
     private final KycOrchestrationService orchestrationService;
@@ -39,6 +40,7 @@ public class KycController {
 
     @GetMapping("/status/{userId}")
     @PreAuthorize("@securityService.canAccessUser(#userId)")
+    @io.swagger.v3.oas.annotations.Operation(summary = "Get KYC Status", description = "Retrieves the latest KYC request status for a specific user")
     public ResponseEntity<?> getKycStatus(@PathVariable Long userId) {
         return requestService.getLatestByUser(userId)
                 .map(request -> ResponseEntity.ok(Map.of(
@@ -48,5 +50,24 @@ public class KycController {
                         "attemptNumber", request.getAttemptNumber(),
                         "submittedAt", request.getCreatedAt())))
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/status/all/{userId}")
+    @PreAuthorize("@securityService.canAccessUser(#userId)")
+    @io.swagger.v3.oas.annotations.Operation(summary = "Get All KYC Requests Status", description = "Retrieves all KYC request history for a specific user. Available to self or ADMIN.")
+    public ResponseEntity<java.util.List<?>> getAllKycStatus(@PathVariable Long userId) {
+        java.util.List<com.example.kyc_system.entity.KycRequest> requests = requestService.getAllByUser(userId);
+        java.util.List<java.util.Map<String, Object>> response = requests.stream()
+                .map(request -> {
+                    java.util.Map<String, Object> map = new java.util.HashMap<>();
+                    map.put("requestId", request.getId());
+                    map.put("status", request.getStatus());
+                    map.put("failureReason", request.getFailureReason() != null ? request.getFailureReason() : "");
+                    map.put("attemptNumber", request.getAttemptNumber());
+                    map.put("submittedAt", request.getCreatedAt());
+                    return map;
+                })
+                .collect(java.util.stream.Collectors.toList());
+        return ResponseEntity.ok(response);
     }
 }
