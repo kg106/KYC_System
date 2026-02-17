@@ -36,7 +36,7 @@ public class KycOrchestrationService {
 
                 User user = userService.getActiveUser(userId);
 
-                KycRequest request = requestService.createOrReuse(userId);
+                KycRequest request = requestService.createOrReuse(userId, documentType.name());
                 requestService.updateStatus(request.getId(), KycStatus.PROCESSING);
 
                 KycDocument document = documentService.save(request.getId(), documentType, file, documentNumber);

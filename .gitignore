@@ -36,3 +36,4 @@ build/
 uploads/
 logs/
 *.log
+application.properties

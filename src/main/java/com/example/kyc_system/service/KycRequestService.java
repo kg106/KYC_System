@@ -6,7 +6,7 @@ import com.example.kyc_system.enums.KycStatus;
 import java.util.Optional;
 
 public interface KycRequestService {
-    KycRequest createOrReuse(Long userId);
+    KycRequest createOrReuse(Long userId, String documentType);
 
     void updateStatus(Long requestId, KycStatus status);
 

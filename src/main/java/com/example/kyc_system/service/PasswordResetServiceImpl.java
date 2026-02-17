@@ -101,6 +101,10 @@ public class PasswordResetServiceImpl implements PasswordResetService {
             throw new RuntimeException("Invalid token");
         }
 
+        if (!resetDTO.getNewPassword().equals(resetDTO.getConfirmPassword())) {
+            throw new RuntimeException("Passwords do not match");
+        }
+
         if (LocalDateTime.now().isAfter(info.expiry)) {
             tokenStorage.remove(email);
             throw new RuntimeException("Token has expired");

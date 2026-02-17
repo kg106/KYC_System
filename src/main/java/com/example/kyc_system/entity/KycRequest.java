@@ -25,6 +25,9 @@ public class KycRequest extends BaseEntity {
     @Column(length = 20, nullable = false)
     private String status;
 
+    @Column(name = "document_type", length = 20, nullable = false)
+    private String documentType;
+
     @Builder.Default
     @Column(name = "attempt_number", nullable = false)
     private Integer attemptNumber = 1;

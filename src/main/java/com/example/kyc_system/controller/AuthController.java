@@ -42,16 +42,16 @@ public class AuthController {
         return new ResponseEntity<>(savedUser, HttpStatus.CREATED);
     }
 
-    @PostMapping("/forgot-password/generate-token")
-    @io.swagger.v3.oas.annotations.Operation(summary = "Generate Reset Token", description = "Generates a password reset token for a given email address")
+    @PostMapping("/forgot-password")
+    @io.swagger.v3.oas.annotations.Operation(summary = "Forgot Password (Step 1)", description = "Enter your email to receive a 6-character reset token. This token will be sent to your registered email address and is valid for 15 minutes.")
     public ResponseEntity<String> generateResetToken(
             @jakarta.validation.Valid @RequestBody com.example.kyc_system.dto.PasswordResetRequestDTO requestDTO) {
         String message = passwordResetService.generateToken(requestDTO.getEmail());
         return ResponseEntity.ok(message);
     }
 
-    @PostMapping("/forgot-password/reset")
-    @io.swagger.v3.oas.annotations.Operation(summary = "Reset Password", description = "Resets the user's password using a valid reset token")
+    @PostMapping("/change-password")
+    @io.swagger.v3.oas.annotations.Operation(summary = "Change Password (Step 2)", description = "Use the token received in your email to set a new password. Make sure the 'newPassword' and 'confirmPassword' fields match exactly.")
     public ResponseEntity<String> resetPassword(
             @jakarta.validation.Valid @RequestBody com.example.kyc_system.dto.PasswordResetDTO resetDTO) {
         passwordResetService.resetPassword(resetDTO);

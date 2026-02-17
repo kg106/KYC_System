@@ -50,7 +50,7 @@ class KycOrchestrationServiceTest {
 
         when(documentService.isVerified(userId, type, docNumber)).thenReturn(false);
         when(userService.getActiveUser(userId)).thenReturn(new User());
-        when(requestService.createOrReuse(userId)).thenReturn(KycRequest.builder().id(1L).build());
+        when(requestService.createOrReuse(userId, type.name())).thenReturn(KycRequest.builder().id(1L).build());
 
         KycDocument mockDocument = new KycDocument();
         mockDocument.setId(1L);
@@ -65,7 +65,7 @@ class KycOrchestrationServiceTest {
 
         verify(documentService).isVerified(userId, type, docNumber);
         verify(userService).getActiveUser(userId);
-        verify(requestService).createOrReuse(userId);
+        verify(requestService).createOrReuse(userId, type.name());
         verify(requestService, times(2)).updateStatus(anyLong(), any());
         verify(documentService).save(eq(1L), eq(type), any(), eq(docNumber));
         verify(ocrService).extract(any(), eq(type));

@@ -1,9 +1,11 @@
 package com.example.kyc_system.controller;
 
-import com.example.kyc_system.dto.JwtAuthResponse;
 import com.example.kyc_system.dto.LoginDTO;
 import com.example.kyc_system.dto.UserDTO;
 import com.example.kyc_system.service.UserService;
+import com.example.kyc_system.service.PasswordResetService;
+import com.example.kyc_system.dto.PasswordResetRequestDTO;
+import com.example.kyc_system.dto.PasswordResetDTO;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,6 +16,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -28,6 +31,9 @@ class AuthControllerTest {
 
     @MockBean
     private UserService userService;
+
+    @MockBean
+    private PasswordResetService passwordResetService;
 
     @MockBean
     private com.example.kyc_system.security.JwtTokenProvider jwtTokenProvider;
@@ -83,5 +89,33 @@ class AuthControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.email").value("test@example.com"))
                 .andExpect(jsonPath("$.name").value("Test User"));
+    }
+
+    @Test
+    void generateResetToken_Success() throws Exception {
+        PasswordResetRequestDTO requestDTO = new PasswordResetRequestDTO();
+        requestDTO.setEmail("test@example.com");
+
+        given(passwordResetService.generateToken(anyString()))
+                .willReturn("If account exist, then email has been sent.");
+
+        mockMvc.perform(post("/api/auth/forgot-password")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(requestDTO)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void resetPassword_Success() throws Exception {
+        PasswordResetDTO resetDTO = new PasswordResetDTO();
+        resetDTO.setEmail("test@example.com");
+        resetDTO.setToken("A1B2C3");
+        resetDTO.setNewPassword("Strong@123");
+        resetDTO.setConfirmPassword("Strong@123");
+
+        mockMvc.perform(post("/api/auth/change-password")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(resetDTO)))
+                .andExpect(status().isOk());
     }
 }

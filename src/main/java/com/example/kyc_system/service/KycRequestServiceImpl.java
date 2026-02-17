@@ -20,15 +20,19 @@ public class KycRequestServiceImpl implements KycRequestService {
     private final UserService userService;
 
     @Override
-    public KycRequest createOrReuse(Long userId) {
+    public KycRequest createOrReuse(Long userId, String documentType) {
         LocalDateTime startOfDay = LocalDateTime.now().with(java.time.LocalTime.MIN);
-        long dailyCount = repository.countByUserIdAndSubmittedAtGreaterThanEqual(userId, startOfDay);
 
-        if (dailyCount >= 5) {
-            throw new RuntimeException("Daily KYC request limit reached. You can only make 5 requests per day.");
+        // Sum attemptNumber across all requests for the user today
+        long totalAttemptsToday = repository.sumAttemptNumberByUserIdAndSubmittedAtGreaterThanEqual(userId, startOfDay);
+
+        if (totalAttemptsToday >= 5) {
+            throw new RuntimeException("Daily KYC attempt limit reached (5). Please try again tomorrow.");
         }
 
-        Optional<KycRequest> latestRequest = repository.findTopByUserIdOrderByCreatedAtDesc(userId);
+        // Only reuse failed requests for the SAME document type
+        Optional<KycRequest> latestRequest = repository.findTopByUserIdAndDocumentTypeOrderByCreatedAtDesc(userId,
+                documentType);
 
         if (latestRequest.isPresent()) {
             KycRequest request = latestRequest.get();
@@ -38,7 +42,7 @@ public class KycRequestServiceImpl implements KycRequestService {
                     status.equals(KycStatus.SUBMITTED.name()) ||
                     status.equals(KycStatus.PROCESSING.name())) {
                 throw new RuntimeException(
-                        "Only one KYC request can be processed at a time. Please wait until your current request is completed.");
+                        "Only one KYC request for " + documentType + " can be processed at a time. Please wait.");
             }
 
             if (status.equals(KycStatus.FAILED.name())) {
@@ -52,6 +56,7 @@ public class KycRequestServiceImpl implements KycRequestService {
         User user = userService.getActiveUser(userId);
         KycRequest newRequest = new KycRequest();
         newRequest.setUser(user);
+        newRequest.setDocumentType(documentType);
         newRequest.setStatus(KycStatus.SUBMITTED.name());
         newRequest.setAttemptNumber(1);
         newRequest.setSubmittedAt(LocalDateTime.now());

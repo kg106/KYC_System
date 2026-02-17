@@ -203,6 +203,7 @@ class KycFlowIntegrationTest {
                 // 1. Manually create a PROCESSING request
                 KycRequest activeRequest = new KycRequest();
                 activeRequest.setUser(testUser);
+                activeRequest.setDocumentType("AADHAAR");
                 activeRequest.setStatus(KycStatus.PROCESSING.name());
                 activeRequest.setAttemptNumber(1);
                 activeRequest.setSubmittedAt(java.time.LocalDateTime.now());
@@ -226,6 +227,7 @@ class KycFlowIntegrationTest {
                 for (int i = 1; i <= 5; i++) {
                         KycRequest request = new KycRequest();
                         request.setUser(testUser);
+                        request.setDocumentType("AADHAAR");
                         request.setStatus(KycStatus.FAILED.name());
                         request.setAttemptNumber(1);
                         request.setSubmittedAt(java.time.LocalDateTime.now());

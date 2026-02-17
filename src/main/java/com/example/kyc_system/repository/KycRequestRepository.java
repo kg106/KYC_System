@@ -19,6 +19,12 @@ public interface KycRequestRepository extends JpaRepository<KycRequest, Long> {
 
     Optional<KycRequest> findTopByUserIdOrderByCreatedAtDesc(Long userId);
 
+    Optional<KycRequest> findTopByUserIdAndDocumentTypeOrderByCreatedAtDesc(Long userId, String documentType);
+
+    @Query("SELECT COALESCE(SUM(k.attemptNumber), 0) FROM KycRequest k WHERE k.user.id = :userId AND k.submittedAt >= :startOfDay")
+    long sumAttemptNumberByUserIdAndSubmittedAtGreaterThanEqual(@Param("userId") Long userId,
+            @Param("startOfDay") java.time.LocalDateTime startOfDay);
+
     long countByUserIdAndSubmittedAtGreaterThanEqual(Long userId, java.time.LocalDateTime startOfDay);
 
     List<KycRequest> findByStatus(String status);

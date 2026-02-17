@@ -27,4 +27,8 @@ public class PasswordResetDTO {
     @Size(min = 8, message = "Password must be at least 8 characters long")
     @Pattern(regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[@#$%^&+=!_]).{8,}$", message = "Password must contain at least one uppercase letter, one lowercase letter, one digit, and one special character")
     private String newPassword;
+
+    @Schema(example = "NewPassword@123", description = "Confirm the new password (must match newPassword)")
+    @NotBlank(message = "Confirm password is required")
+    private String confirmPassword;
 }
