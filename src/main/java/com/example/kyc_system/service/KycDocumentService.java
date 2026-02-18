@@ -8,4 +8,6 @@ public interface KycDocumentService {
         KycDocument save(Long requestId, DocumentType documentType, MultipartFile file, String documentNumber);
 
         boolean isVerified(Long userId, DocumentType documentType, String documentNumber);
+
+        void deleteDocument(KycDocument document);
 }

@@ -62,6 +62,21 @@ public class KycDocumentServiceImpl implements KycDocumentService {
                 userId, documentType.name(), documentNumber, "VERIFIED");
     }
 
+    @Override
+    public void deleteDocument(KycDocument document) {
+        if (document.getDocumentPath() != null) {
+            try {
+                Path path = Paths.get(document.getDocumentPath());
+                Files.deleteIfExists(path);
+            } catch (IOException e) {
+                // Log the error but don't stop the deletion process
+                // In a real application, you might want to log this properly
+                System.err.println("Failed to delete file: " + document.getDocumentPath());
+                e.printStackTrace();
+            }
+        }
+    }
+
     private String store(MultipartFile file) {
         try {
             String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();

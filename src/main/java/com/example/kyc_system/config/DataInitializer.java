@@ -9,6 +9,7 @@ import com.example.kyc_system.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +23,7 @@ public class DataInitializer implements CommandLineRunner {
     private final UserRepository userRepository;
     private final UserRoleRepository userRoleRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JdbcTemplate jdbcTemplate;
 
     @Override
     @Transactional
@@ -47,6 +49,23 @@ public class DataInitializer implements CommandLineRunner {
                     .role(adminRole)
                     .build();
             userRoleRepository.save(adminUserRole);
+        }
+
+        // Initialize Database Constraints
+        initUniqueIndex();
+    }
+
+    private void initUniqueIndex() {
+        try {
+            String sql = "CREATE UNIQUE INDEX IF NOT EXISTS unique_active_kyc " +
+                    "ON kyc_requests(user_id, document_type) " +
+                    "WHERE status IN ('PENDING', 'SUBMITTED', 'PROCESSING')";
+            jdbcTemplate.execute(sql);
+            System.out.println("Initialized unique index: unique_active_kyc");
+        } catch (Exception e) {
+            System.err.println("Failed to initialize unique index: " + e.getMessage());
+            // Don't block startup if index creation fails (e.g. permission issues),
+            // but log it clearly.
         }
     }
 

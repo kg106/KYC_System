@@ -8,6 +8,10 @@ import com.example.kyc_system.repository.RoleRepository;
 import com.example.kyc_system.repository.UserRepository;
 import com.example.kyc_system.repository.UserRoleRepository;
 import com.example.kyc_system.security.JwtTokenProvider;
+import com.example.kyc_system.repository.KycRequestRepository;
+import com.example.kyc_system.service.KycDocumentService;
+import com.example.kyc_system.entity.KycRequest;
+import com.example.kyc_system.entity.KycDocument;
 import com.example.kyc_system.util.PasswordUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,6 +43,12 @@ class UserServiceTest {
 
         @Mock
         private JwtTokenProvider jwtTokenProvider;
+
+        @Mock
+        private KycRequestRepository kycRequestRepository;
+
+        @Mock
+        private KycDocumentService kycDocumentService;
 
         @InjectMocks
         private UserServiceImpl userService;
@@ -152,10 +162,16 @@ class UserServiceTest {
         @Test
         void deleteUser_ShouldCallDelete_WhenUserExists() {
                 Long userId = 1L;
+                KycDocument doc = new KycDocument();
+                KycRequest request = new KycRequest();
+                request.setKycDocuments(java.util.Set.of(doc));
+
                 when(userRepository.existsById(userId)).thenReturn(true);
+                when(kycRequestRepository.findByUserId(userId)).thenReturn(java.util.List.of(request));
 
                 userService.deleteUser(userId);
 
+                verify(kycDocumentService, times(1)).deleteDocument(doc);
                 verify(userRepository, times(1)).deleteById(userId);
         }
 

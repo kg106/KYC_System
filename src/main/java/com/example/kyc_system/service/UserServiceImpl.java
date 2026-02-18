@@ -7,7 +7,9 @@ import com.example.kyc_system.entity.User;
 import com.example.kyc_system.entity.UserRole;
 import com.example.kyc_system.repository.RoleRepository;
 import com.example.kyc_system.repository.UserRepository;
+
 import com.example.kyc_system.repository.UserRoleRepository;
+import com.example.kyc_system.repository.KycRequestRepository;
 import com.example.kyc_system.security.JwtTokenProvider;
 import com.example.kyc_system.util.PasswordUtil;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +19,11 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import com.example.kyc_system.dto.UserSearchDTO;
+import com.example.kyc_system.repository.specification.UserSpecification;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -30,6 +37,8 @@ public class UserServiceImpl implements UserService {
     private final UserRoleRepository userRoleRepository;
     private final AuthenticationManager authenticationManager;
     private final JwtTokenProvider jwtTokenProvider;
+    private final KycRequestRepository kycRequestRepository;
+    private final KycDocumentService kycDocumentService;
 
     @Override
     public User getActiveUser(Long userId) {
@@ -117,6 +126,12 @@ public class UserServiceImpl implements UserService {
         if (!userRepository.existsById(id)) {
             throw new RuntimeException("User not found with id: " + id);
         }
+
+        // Delete associated KYC documents from file system
+        kycRequestRepository.findByUserId(id).forEach(request -> {
+            request.getKycDocuments().forEach(kycDocumentService::deleteDocument);
+        });
+
         userRepository.deleteById(id);
     }
 
@@ -128,6 +143,13 @@ public class UserServiceImpl implements UserService {
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
         return jwtTokenProvider.generateToken(authentication);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<UserDTO> searchUsers(UserSearchDTO searchDTO, Pageable pageable) {
+        return userRepository.findAll(UserSpecification.buildSpecification(searchDTO), pageable)
+                .map(this::mapToDTO);
     }
 
     private UserDTO mapToDTO(User user) {

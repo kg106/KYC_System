@@ -7,6 +7,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import com.example.kyc_system.dto.UserSearchDTO;
 import java.util.List;
 
 @RestController
@@ -28,7 +31,7 @@ public class UserController {
         return new ResponseEntity<>(users, HttpStatus.OK);
     }
 
-    @GetMapping("{id}")
+    @GetMapping("{userId}")
     @PreAuthorize("@securityService.canAccessUser(#userId)")
     @io.swagger.v3.oas.annotations.Operation(summary = "Get User by ID", description = "Retrieves profile details for a specific user. Available to self or ADMIN.")
     public ResponseEntity<UserDTO> getUserById(@PathVariable("id") Long userId) {
@@ -36,7 +39,7 @@ public class UserController {
         return new ResponseEntity<>(userDto, HttpStatus.OK);
     }
 
-    @PatchMapping("{id}")
+    @PatchMapping("{userId}")
     @PreAuthorize("@securityService.canAccessUser(#userId)")
     @io.swagger.v3.oas.annotations.Operation(summary = "Update User Profile", description = "Performs a partial update of a user's profile. Available to self or ADMIN.")
     public ResponseEntity<UserDTO> updateUser(@PathVariable("id") Long userId,
@@ -45,12 +48,33 @@ public class UserController {
         return new ResponseEntity<>(userDto, HttpStatus.OK);
     }
 
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/{userId}")
     @PreAuthorize("hasRole('ADMIN')")
     @io.swagger.v3.oas.annotations.Operation(summary = "Delete User", description = "Permanently deletes a user from the system. Restricted to ADMIN.")
     public ResponseEntity<String> deleteUser(@PathVariable("id") Long userId) {
         userService.deleteUser(userId);
         return ResponseEntity.ok("User deleted successfully");
+    }
+
+    @GetMapping("/search")
+    @PreAuthorize("hasRole('ADMIN')")
+    @io.swagger.v3.oas.annotations.Operation(summary = "Search Users", description = "Search users with filters and pagination. Restricted to ADMIN.")
+    public ResponseEntity<Page<UserDTO>> searchUsers(
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String email,
+            @RequestParam(required = false) String mobileNumber,
+            @RequestParam(required = false) Boolean isActive,
+            Pageable pageable) {
+
+        UserSearchDTO searchDTO = UserSearchDTO.builder()
+                .name(name)
+                .email(email)
+                .mobileNumber(mobileNumber)
+                .isActive(isActive)
+                .build();
+
+        Page<UserDTO> users = userService.searchUsers(searchDTO, pageable);
+        return ResponseEntity.ok(users);
     }
 
 }

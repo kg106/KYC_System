@@ -1,9 +1,7 @@
 package com.example.kyc_system.service;
 
-import com.example.kyc_system.dto.OcrResult;
 import com.example.kyc_system.entity.*;
 import com.example.kyc_system.enums.DocumentType;
-import com.example.kyc_system.enums.KycStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -32,6 +30,10 @@ class KycOrchestrationServiceTest {
     private KycExtractionService extractionService;
     @Mock
     private KycVerificationService verificationService;
+    @Mock
+    private com.example.kyc_system.queue.KycQueueService queueService;
+    @Mock
+    private com.example.kyc_system.repository.KycRequestRepository kycRequestRepository;
 
     @InjectMocks
     private KycOrchestrationService orchestrationService;
@@ -42,35 +44,35 @@ class KycOrchestrationServiceTest {
     }
 
     @Test
-    void processKyc_ShouldFlowThroughAllServices_WhenSuccessful() throws IOException {
+    void submitKyc_ShouldQueueRequest_WhenSuccessful() throws IOException {
         Long userId = 1L;
         DocumentType type = DocumentType.PAN;
         String docNumber = "PAN123";
         MockMultipartFile file = new MockMultipartFile("file", "test.jpg", "image/jpeg", "content".getBytes());
 
         when(documentService.isVerified(userId, type, docNumber)).thenReturn(false);
-        when(userService.getActiveUser(userId)).thenReturn(new User());
-        when(requestService.createOrReuse(userId, type.name())).thenReturn(KycRequest.builder().id(1L).build());
+        // when(userService.getActiveUser(userId)).thenReturn(new User()); // Not used
+        // in submitKyc anymore
+        when(requestService.createOrReuse(userId, type.name())).thenReturn(KycRequest.builder().id(100L).build());
 
         KycDocument mockDocument = new KycDocument();
         mockDocument.setId(1L);
         when(documentService.save(anyLong(), any(), any(), any())).thenReturn(mockDocument);
 
-        when(ocrService.extract(any(), any())).thenReturn(new OcrResult());
-        when(extractionService.save(anyLong(), any())).thenReturn(new KycExtractedData());
-        when(verificationService.verifyAndSave(anyLong(), any(), any())).thenReturn(
-                KycVerificationResult.builder().finalStatus("VERIFIED").build());
+        // Act
+        orchestrationService.submitKyc(userId, type, file, docNumber);
 
-        orchestrationService.processKyc(userId, type, file, docNumber);
-
+        // Assert
         verify(documentService).isVerified(userId, type, docNumber);
-        verify(userService).getActiveUser(userId);
+        // verify(userService).getActiveUser(userId); // Not used
         verify(requestService).createOrReuse(userId, type.name());
-        verify(requestService, times(2)).updateStatus(anyLong(), any());
-        verify(documentService).save(eq(1L), eq(type), any(), eq(docNumber));
-        verify(ocrService).extract(any(), eq(type));
-        verify(extractionService).save(eq(1L), any());
-        verify(verificationService).verifyAndSave(anyLong(), any(), any());
+        verify(documentService).save(eq(100L), eq(type), any(), eq(docNumber));
+        verify(queueService).push(100L); // Verify Pushed to Queue
+
+        // Verify Async parts are NOT called synchronously
+        verifyNoInteractions(ocrService);
+        verifyNoInteractions(extractionService);
+        verifyNoInteractions(verificationService);
     }
 
     @Test
@@ -82,20 +84,14 @@ class KycOrchestrationServiceTest {
 
         when(documentService.isVerified(userId, type, docNumber)).thenReturn(true);
 
-        assertThrows(RuntimeException.class, () -> orchestrationService.processKyc(userId, type, file, docNumber));
+        assertThrows(RuntimeException.class, () -> orchestrationService.submitKyc(userId, type, file, docNumber));
         verifyNoInteractions(userService, requestService, ocrService);
     }
 
-    @Test
-    void processKyc_ShouldFail_WhenUserServiceThrowsException() {
-        Long userId = 1L;
-        DocumentType type = DocumentType.PAN;
-        String docNumber = "PAN123";
-        MockMultipartFile file = new MockMultipartFile("file", "test.jpg", "image/jpeg", "content".getBytes());
-
-        when(documentService.isVerified(userId, type, docNumber)).thenReturn(false);
-        when(userService.getActiveUser(userId)).thenThrow(new RuntimeException("User not found"));
-
-        assertThrows(RuntimeException.class, () -> orchestrationService.processKyc(userId, type, file, docNumber));
-    }
+    /*
+     * @Test
+     * void processKyc_ShouldFail_WhenUserServiceThrowsException() {
+     * // ... (Disabled as logic moved to async or requestService)
+     * }
+     */
 }

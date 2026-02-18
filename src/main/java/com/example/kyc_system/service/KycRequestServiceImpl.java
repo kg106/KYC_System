@@ -8,6 +8,11 @@ import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import com.example.kyc_system.dto.KycRequestSearchDTO;
+import com.example.kyc_system.repository.specification.KycRequestSpecification;
+
 import java.time.LocalDateTime;
 import java.util.Optional;
 
@@ -18,8 +23,18 @@ public class KycRequestServiceImpl implements KycRequestService {
 
     private final KycRequestRepository repository;
     private final UserService userService;
+    private final AuditLogService auditLogService;
+
+    private String getCurrentUser() {
+        if (org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication() != null) {
+            return org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication()
+                    .getName();
+        }
+        return "SYSTEM";
+    }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public KycRequest createOrReuse(Long userId, String documentType) {
         LocalDateTime startOfDay = LocalDateTime.now().with(java.time.LocalTime.MIN);
 
@@ -49,6 +64,10 @@ public class KycRequestServiceImpl implements KycRequestService {
                 request.setAttemptNumber(request.getAttemptNumber() + 1);
                 request.setStatus(KycStatus.SUBMITTED.name());
                 request.setSubmittedAt(LocalDateTime.now());
+
+                auditLogService.logAction("SUBMIT", "KycRequest", request.getId(),
+                        "Re-submitted KYC request for " + documentType, getCurrentUser());
+
                 return request;
             }
         }
@@ -60,7 +79,14 @@ public class KycRequestServiceImpl implements KycRequestService {
         newRequest.setStatus(KycStatus.SUBMITTED.name());
         newRequest.setAttemptNumber(1);
         newRequest.setSubmittedAt(LocalDateTime.now());
-        return repository.save(newRequest);
+        try {
+            KycRequest savedRequest = repository.save(newRequest);
+            auditLogService.logAction("SUBMIT", "KycRequest", savedRequest.getId(),
+                    "Submitted new KYC request for " + documentType, getCurrentUser());
+            return savedRequest;
+        } catch (org.springframework.dao.DataIntegrityViolationException ex) {
+            throw new com.example.kyc_system.exception.BusinessException("Only one request can be processed at a time");
+        }
     }
 
     @Override
@@ -68,6 +94,9 @@ public class KycRequestServiceImpl implements KycRequestService {
         KycRequest request = repository.findById(requestId)
                 .orElseThrow(() -> new RuntimeException("KYC request not found"));
         request.setStatus(String.valueOf(status));
+
+        auditLogService.logAction("UPDATE_STATUS", "KycRequest", requestId,
+                "Updated status to " + status, getCurrentUser());
     }
 
     @Override
@@ -77,6 +106,12 @@ public class KycRequestServiceImpl implements KycRequestService {
         request.ifPresent(r -> {
             r.getKycDocuments().forEach(doc -> doc.getExtractedData().size());
         });
+
+        if (request.isPresent()) {
+            auditLogService.logAction("VIEW_STATUS", "KycRequest", request.get().getId(),
+                    "Viewed latest KYC status", getCurrentUser());
+        }
+
         return request;
     }
 
@@ -87,6 +122,34 @@ public class KycRequestServiceImpl implements KycRequestService {
         requests.forEach(r -> {
             r.getKycDocuments().forEach(doc -> doc.getExtractedData().size());
         });
+
+        auditLogService.logAction("VIEW_HISTORY", "User", userId,
+                "Viewed KYC history", getCurrentUser());
+
+        return requests;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<KycRequest> searchKycRequests(KycRequestSearchDTO searchDTO, Pageable pageable) {
+        Page<KycRequest> requests = repository.findAll(KycRequestSpecification.buildSpecification(searchDTO), pageable);
+        requests.forEach(r -> {
+            r.getKycDocuments().forEach(doc -> doc.getExtractedData().size());
+        });
+
+        java.util.Map<String, Object> searchCriteria = new java.util.HashMap<>();
+        if (searchDTO.getUserId() != null)
+            searchCriteria.put("userId", searchDTO.getUserId());
+        if (searchDTO.getUserName() != null)
+            searchCriteria.put("userName", searchDTO.getUserName());
+        if (searchDTO.getStatus() != null)
+            searchCriteria.put("status", searchDTO.getStatus());
+        if (searchDTO.getDocumentType() != null)
+            searchCriteria.put("documentType", searchDTO.getDocumentType());
+
+        auditLogService.logAction("SEARCH_KYC", "KycRequest", null,
+                searchCriteria, getCurrentUser());
+
         return requests;
     }
 }

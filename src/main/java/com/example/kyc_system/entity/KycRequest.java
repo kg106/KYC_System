@@ -51,4 +51,7 @@ public class KycRequest extends BaseEntity {
     @OneToMany(mappedBy = "kycRequest", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private java.util.Set<KycVerificationResult> verificationResults = new java.util.HashSet<>();
+
+    @Version
+    private Long version;
 }

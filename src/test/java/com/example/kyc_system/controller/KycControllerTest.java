@@ -21,7 +21,6 @@ import java.util.Optional;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.doNothing;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -63,19 +62,20 @@ class KycControllerTest {
                                 MediaType.IMAGE_JPEG_VALUE,
                                 "test image content".getBytes());
 
-                doNothing().when(orchestrationService).processKyc(
+                given(orchestrationService.submitKyc(
                                 eq(1L),
                                 eq(DocumentType.AADHAAR),
                                 any(),
-                                eq("1234567890"));
+                                eq("1234567890"))).willReturn(100L);
 
                 mockMvc.perform(multipart("/api/kyc/upload")
                                 .file(file)
                                 .param("userId", "1")
                                 .param("documentType", "AADHAAR")
                                 .param("documentNumber", "1234567890"))
-                                .andExpect(status().isOk())
-                                .andExpect(jsonPath("$.message").value("KYC processing started successfully"));
+                                .andExpect(status().isAccepted())
+                                .andExpect(jsonPath("$.message").value("KYC request submitted successfully"))
+                                .andExpect(jsonPath("$.requestId").value(100));
         }
 
         @Test

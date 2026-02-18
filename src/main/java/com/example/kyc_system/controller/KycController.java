@@ -10,7 +10,11 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import com.example.kyc_system.dto.KycRequestSearchDTO;
 import java.util.Map;
+import java.time.LocalDateTime;
 
 @RestController
 @RequestMapping("/api/kyc")
@@ -31,8 +35,10 @@ public class KycController {
             @io.swagger.v3.oas.annotations.Parameter(description = "KYC Document File", required = true) @RequestParam("file") MultipartFile file,
             @io.swagger.v3.oas.annotations.Parameter(description = "Document Number", required = true) @RequestParam("documentNumber") String documentNumber) {
         try {
-            orchestrationService.processKyc(userId, documentType, file, documentNumber);
-            return ResponseEntity.ok(Map.of("message", "KYC processing started successfully"));
+            Long requestId = orchestrationService.submitKyc(userId, documentType, file, documentNumber);
+            return ResponseEntity.accepted().body(Map.of(
+                    "message", "KYC request submitted successfully",
+                    "requestId", requestId));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
@@ -62,6 +68,32 @@ public class KycController {
         java.util.List<java.util.Map<String, Object>> response = requests.stream()
                 .map(this::formatKycResponse)
                 .collect(java.util.stream.Collectors.toList());
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/search")
+    @PreAuthorize("hasRole('ADMIN')")
+    @io.swagger.v3.oas.annotations.Operation(summary = "Search KYC Requests", description = "Search KYC requests with filters and pagination. Restricted to ADMIN.")
+    public ResponseEntity<Page<Map<String, Object>>> searchKycRequests(
+            @RequestParam(required = false) Long userId,
+            @RequestParam(required = false) String userName,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String documentType,
+            @RequestParam(required = false) LocalDateTime dateFrom,
+            @RequestParam(required = false) LocalDateTime dateTo,
+            Pageable pageable) {
+
+        KycRequestSearchDTO searchDTO = KycRequestSearchDTO.builder()
+                .userId(userId)
+                .userName(userName)
+                .status(status)
+                .documentType(documentType)
+                .dateFrom(dateFrom)
+                .dateTo(dateTo)
+                .build();
+
+        Page<com.example.kyc_system.entity.KycRequest> requests = requestService.searchKycRequests(searchDTO, pageable);
+        Page<Map<String, Object>> response = requests.map(this::formatKycResponse);
         return ResponseEntity.ok(response);
     }
 

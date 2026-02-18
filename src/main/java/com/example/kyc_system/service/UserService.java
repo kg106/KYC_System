@@ -4,6 +4,9 @@ import com.example.kyc_system.dto.LoginDTO;
 import com.example.kyc_system.entity.User;
 import com.example.kyc_system.dto.UserDTO;
 import com.example.kyc_system.dto.UserUpdateDTO;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import com.example.kyc_system.dto.UserSearchDTO;
 import java.util.List;
 
 public interface UserService {
@@ -20,4 +23,6 @@ public interface UserService {
     void deleteUser(Long id);
 
     String login(LoginDTO loginDTO);
+
+    Page<UserDTO> searchUsers(UserSearchDTO searchDTO, Pageable pageable);
 }
