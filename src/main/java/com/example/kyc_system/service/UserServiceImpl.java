@@ -61,6 +61,13 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    public UserDTO getUserByEmail(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
+        return mapToDTO(user);
+    }
+
+    @Override
     @Transactional
     public UserDTO createUser(UserDTO userDTO) {
         if (userRepository.findByEmail(userDTO.getEmail()).isPresent()) {

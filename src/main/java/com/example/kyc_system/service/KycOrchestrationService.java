@@ -69,7 +69,7 @@ public class KycOrchestrationService {
                         KycDocument document = request.getKycDocuments().iterator().next();
                         return new Object() {
                                 final Long reqId = request.getId();
-                                final User user = request.getUser();
+                                // User not needed here, fetched inside verifyAndSave
                                 final String docPath = document.getDocumentPath();
                                 final DocumentType docType = DocumentType.valueOf(document.getDocumentType());
                                 final Long docId = document.getId();
@@ -86,7 +86,7 @@ public class KycOrchestrationService {
                         transactionTemplate.execute(status -> {
                                 KycExtractedData extracted = extractionService.save(processingData.docId, ocrResult);
                                 KycVerificationResult result = verificationService.verifyAndSave(processingData.reqId,
-                                                processingData.user, extracted);
+                                                extracted);
 
                                 // Update Request
                                 KycRequest request = kycRequestRepository.findById(processingData.reqId).orElseThrow();

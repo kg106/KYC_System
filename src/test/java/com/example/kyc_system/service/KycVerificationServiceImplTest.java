@@ -70,7 +70,7 @@ class KycVerificationServiceImplTest {
         when(requestRepository.findById(1L)).thenReturn(Optional.of(request));
         when(repository.save(any(KycVerificationResult.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        KycVerificationResult result = verificationService.verifyAndSave(1L, user, extractedData);
+        KycVerificationResult result = verificationService.verifyAndSave(1L, extractedData);
 
         assertEquals(KycStatus.VERIFIED.name(), result.getFinalStatus());
         assertTrue(result.getDobMatch());
@@ -86,7 +86,7 @@ class KycVerificationServiceImplTest {
         when(requestRepository.findById(1L)).thenReturn(Optional.of(request));
         when(repository.save(any(KycVerificationResult.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        KycVerificationResult result = verificationService.verifyAndSave(1L, user, extractedData);
+        KycVerificationResult result = verificationService.verifyAndSave(1L, extractedData);
 
         assertEquals(KycStatus.FAILED.name(), result.getFinalStatus());
         assertFalse(result.getDocumentNumberMatch());
@@ -100,7 +100,7 @@ class KycVerificationServiceImplTest {
         when(requestRepository.findById(1L)).thenReturn(Optional.of(request));
         when(repository.save(any(KycVerificationResult.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        KycVerificationResult result = verificationService.verifyAndSave(1L, user, extractedData);
+        KycVerificationResult result = verificationService.verifyAndSave(1L, extractedData);
 
         assertEquals(KycStatus.FAILED.name(), result.getFinalStatus());
         assertFalse(result.getDocumentNumberMatch());

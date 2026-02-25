@@ -19,23 +19,24 @@ public class KycVerificationServiceImpl implements KycVerificationService {
         @Override
         public KycVerificationResult verifyAndSave(
                         Long requestId,
-                        User user,
-                        KycExtractedData extracted) {
+                        KycExtractedData extractedData) {
 
                 KycRequest request = requestRepository.findById(requestId)
                                 .orElseThrow(() -> new RuntimeException("Request not found"));
+                User user = request.getUser();
 
                 String userName = user.getName() != null ? user.getName().toLowerCase() : "";
-                String extractedName = extracted.getExtractedName() != null ? extracted.getExtractedName().toLowerCase()
+                String extractedName = extractedData.getExtractedName() != null
+                                ? extractedData.getExtractedName().toLowerCase()
                                 : "";
 
                 double nameScore = similarity(userName, extractedName);
                 boolean nameMatch = nameScore >= 0.75; // More lenient for middle initials
-                boolean dobMatch = user.getDob() != null && user.getDob().equals(extracted.getExtractedDob());
+                boolean dobMatch = user.getDob() != null && user.getDob().equals(extractedData.getExtractedDob());
 
-                String storedDoc = extracted.getKycDocument().getDocumentNumber();
+                String storedDoc = extractedData.getKycDocument().getDocumentNumber();
                 String storedDocNormalized = normalize(storedDoc);
-                String extractedDocNormalized = normalize(extracted.getExtractedDocumentNumber());
+                String extractedDocNormalized = normalize(extractedData.getExtractedDocumentNumber());
 
                 boolean docMatch = storedDocNormalized != null &&
                                 storedDocNormalized.equalsIgnoreCase(extractedDocNormalized);
@@ -45,10 +46,10 @@ public class KycVerificationServiceImpl implements KycVerificationService {
                         reason.append(String.format("Name mismatch (score: %.2f%%). ", nameScore * 100));
                 if (!dobMatch)
                         reason.append(String.format("DOB mismatch (Expected: %s, Found: %s). ", user.getDob(),
-                                        extracted.getExtractedDob()));
+                                        extractedData.getExtractedDob()));
                 if (!docMatch)
                         reason.append(String.format("Doc Number mismatch (Expected: %s, Found: %s). ", storedDoc,
-                                        extracted.getExtractedDocumentNumber()));
+                                        extractedData.getExtractedDocumentNumber()));
 
                 KycVerificationResult result = KycVerificationResult.builder()
                                 .kycRequest(request)

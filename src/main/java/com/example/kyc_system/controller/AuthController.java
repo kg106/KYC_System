@@ -12,6 +12,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.CookieValue;
+import jakarta.servlet.http.HttpServletResponse;
+import com.example.kyc_system.service.RefreshTokenService;
+import com.example.kyc_system.util.CookieUtil;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -21,15 +25,23 @@ public class AuthController {
 
     private final UserService userService;
     private final PasswordResetService passwordResetService;
+    private final RefreshTokenService refreshTokenService;
+    private final CookieUtil cookieUtil;
 
     // Build Login REST API
     @PostMapping("/login")
     @io.swagger.v3.oas.annotations.Operation(summary = "User Login", description = "Authenticates user and returns a JWT access token")
-    public ResponseEntity<JwtAuthResponse> login(@jakarta.validation.Valid @RequestBody LoginDTO loginDTO) {
+    public ResponseEntity<JwtAuthResponse> login(@jakarta.validation.Valid @RequestBody LoginDTO loginDTO,
+            HttpServletResponse response) {
         String token = userService.login(loginDTO);
+        UserDTO user = userService.getUserByEmail(loginDTO.getEmail());
+
+        String refreshToken = refreshTokenService.createRefreshToken(user.getId());
+        response.addCookie(cookieUtil.createRefreshTokenCookie(refreshToken));
 
         JwtAuthResponse jwtAuthResponse = new JwtAuthResponse();
         jwtAuthResponse.setAccessToken(token);
+        jwtAuthResponse.setRefreshToken(refreshToken);
 
         return ResponseEntity.ok(jwtAuthResponse);
     }
@@ -56,5 +68,37 @@ public class AuthController {
             @jakarta.validation.Valid @RequestBody com.example.kyc_system.dto.PasswordResetDTO resetDTO) {
         passwordResetService.resetPassword(resetDTO);
         return ResponseEntity.ok("Password successfully reset");
+    }
+
+    @PostMapping("/refresh")
+    @io.swagger.v3.oas.annotations.Operation(summary = "Refresh Token", description = "Uses the HttpOnly refresh token cookie to get a new access token")
+    public ResponseEntity<JwtAuthResponse> refresh(
+            @CookieValue(name = "refreshToken", required = false) String refreshToken, HttpServletResponse response) {
+        if (refreshToken == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        try {
+            JwtAuthResponse authResponse = refreshTokenService.processRefreshToken(refreshToken);
+            response.addCookie(cookieUtil.createRefreshTokenCookie(authResponse.getRefreshToken()));
+            return ResponseEntity.ok(authResponse);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+    }
+
+    @PostMapping("/logout")
+    @io.swagger.v3.oas.annotations.Operation(summary = "User Logout", description = "Revokes the refresh token and clears the cookie")
+    public ResponseEntity<String> logout(@CookieValue(name = "refreshToken", required = false) String refreshToken,
+            HttpServletResponse response) {
+        if (refreshToken != null && !refreshToken.isEmpty()) {
+            try {
+                String familyId = refreshToken.split(":")[0];
+                refreshTokenService.revokeFamily(familyId);
+            } catch (Exception e) {
+                // Ignore parsing errors on logout
+            }
+        }
+        response.addCookie(cookieUtil.createEmptyCookie());
+        return ResponseEntity.ok("Logged out successfully");
     }
 }

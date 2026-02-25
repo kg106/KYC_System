@@ -34,7 +34,7 @@ public class UserController {
     @GetMapping("{userId}")
     @PreAuthorize("@securityService.canAccessUser(#userId)")
     @io.swagger.v3.oas.annotations.Operation(summary = "Get User by ID", description = "Retrieves profile details for a specific user. Available to self or ADMIN.")
-    public ResponseEntity<UserDTO> getUserById(@PathVariable("id") Long userId) {
+    public ResponseEntity<UserDTO> getUserById(@PathVariable("userId") Long userId) {
         UserDTO userDto = userService.getUserById(userId);
         return new ResponseEntity<>(userDto, HttpStatus.OK);
     }
@@ -42,7 +42,7 @@ public class UserController {
     @PatchMapping("{userId}")
     @PreAuthorize("@securityService.canAccessUser(#userId)")
     @io.swagger.v3.oas.annotations.Operation(summary = "Update User Profile", description = "Performs a partial update of a user's profile. Available to self or ADMIN.")
-    public ResponseEntity<UserDTO> updateUser(@PathVariable("id") Long userId,
+    public ResponseEntity<UserDTO> updateUser(@PathVariable("userId") Long userId,
             @jakarta.validation.Valid @RequestBody com.example.kyc_system.dto.UserUpdateDTO updatedUser) {
         UserDTO userDto = userService.updateUser(userId, updatedUser);
         return new ResponseEntity<>(userDto, HttpStatus.OK);
@@ -51,7 +51,7 @@ public class UserController {
     @DeleteMapping("/{userId}")
     @PreAuthorize("hasRole('ADMIN')")
     @io.swagger.v3.oas.annotations.Operation(summary = "Delete User", description = "Permanently deletes a user from the system. Restricted to ADMIN.")
-    public ResponseEntity<String> deleteUser(@PathVariable("id") Long userId) {
+    public ResponseEntity<String> deleteUser(@PathVariable("userId") Long userId) {
         userService.deleteUser(userId);
         return ResponseEntity.ok("User deleted successfully");
     }
@@ -64,7 +64,7 @@ public class UserController {
             @RequestParam(required = false) String email,
             @RequestParam(required = false) String mobileNumber,
             @RequestParam(required = false) Boolean isActive,
-            Pageable pageable) {
+            @org.springdoc.core.annotations.ParameterObject Pageable pageable) {
 
         UserSearchDTO searchDTO = UserSearchDTO.builder()
                 .name(name)

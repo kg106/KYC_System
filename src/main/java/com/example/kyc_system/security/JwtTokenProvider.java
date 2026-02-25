@@ -19,10 +19,14 @@ public class JwtTokenProvider {
     @Value("${app.jwt-expiration-milliseconds}")
     private long jwtExpirationDate;
 
-    // generate JWT token
+    // generate JWT token from Authentication
     public String generateToken(Authentication authentication) {
         String username = authentication.getName();
+        return generateTokenFromUsername(username);
+    }
 
+    // generate JWT token from username directly (used for refresh)
+    public String generateTokenFromUsername(String username) {
         Date currentDate = new Date();
         Date expireDate = new Date(currentDate.getTime() + jwtExpirationDate);
 

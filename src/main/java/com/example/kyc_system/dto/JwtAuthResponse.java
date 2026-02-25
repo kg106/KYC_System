@@ -15,4 +15,6 @@ public class JwtAuthResponse {
     private String accessToken;
     @Schema(example = "Bearer")
     private String tokenType = "Bearer";
+    @Schema(example = "UUID-UUID...", description = "Refresh Token (also returned as HttpOnly Cookie)")
+    private String refreshToken;
 }

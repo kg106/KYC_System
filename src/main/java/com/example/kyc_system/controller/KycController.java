@@ -81,7 +81,7 @@ public class KycController {
             @RequestParam(required = false) String documentType,
             @RequestParam(required = false) LocalDateTime dateFrom,
             @RequestParam(required = false) LocalDateTime dateTo,
-            Pageable pageable) {
+            @org.springdoc.core.annotations.ParameterObject Pageable pageable) {
 
         KycRequestSearchDTO searchDTO = KycRequestSearchDTO.builder()
                 .userId(userId)

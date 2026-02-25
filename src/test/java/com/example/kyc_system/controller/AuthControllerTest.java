@@ -44,6 +44,12 @@ class AuthControllerTest {
     @MockBean
     private com.example.kyc_system.security.CustomAccessDeniedHandler accessDeniedHandler;
 
+    @MockBean
+    private com.example.kyc_system.service.RefreshTokenService refreshTokenService;
+
+    @MockBean
+    private com.example.kyc_system.util.CookieUtil cookieUtil;
+
     @Autowired
     private ObjectMapper objectMapper;
 
@@ -56,6 +62,15 @@ class AuthControllerTest {
 
         String token = "jwt-token";
         given(userService.login(any(LoginDTO.class))).willReturn(token);
+
+        UserDTO mockUser = new UserDTO();
+        mockUser.setId(1L);
+        given(userService.getUserByEmail(anyString())).willReturn(mockUser);
+
+        given(refreshTokenService.createRefreshToken(1L)).willReturn("mock-refresh-token");
+
+        jakarta.servlet.http.Cookie mockCookie = new jakarta.servlet.http.Cookie("refreshToken", "mock-refresh-token");
+        given(cookieUtil.createRefreshTokenCookie(anyString())).willReturn(mockCookie);
 
         // When & Then
         mockMvc.perform(post("/api/auth/login")
