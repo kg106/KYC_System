@@ -1,6 +1,7 @@
 package com.example.kyc_system.controller;
 
 import com.example.kyc_system.enums.DocumentType;
+import com.example.kyc_system.scheduler.KycReportScheduler;
 import com.example.kyc_system.service.KycOrchestrationService;
 import com.example.kyc_system.service.KycRequestService;
 //import com.example.kyc_system.service.UserService;
@@ -15,6 +16,7 @@ import org.springframework.data.domain.Pageable;
 import com.example.kyc_system.dto.KycRequestSearchDTO;
 import java.util.Map;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 
 @RestController
 @RequestMapping("/api/kyc")
@@ -24,6 +26,7 @@ public class KycController {
 
     private final KycOrchestrationService orchestrationService;
     private final KycRequestService requestService;
+    private final KycReportScheduler reportScheduler;
     // private final UserService userService;
 
     @PostMapping(value = "/upload", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -125,5 +128,18 @@ public class KycController {
             }
         }
         return response;
+    }
+
+    // In your existing AdminController or KycController:
+    @PostMapping("/report")
+    @PreAuthorize("hasRole('ADMIN')")
+    @io.swagger.v3.oas.annotations.Operation(summary = "Monthly KYC Report", description = "Manually generates and emails the KYC report. By default, it sends the report for the current month. You can also specify a past month to generate a historical report.")
+    public ResponseEntity<String> triggerReport(
+            @io.swagger.v3.oas.annotations.Parameter(description = "Optional: Provide a specific month in YYYY-MM format (e.g. 2025-01). If left blank, it generates the report for the current month.") @RequestParam String yearMonth) {
+        YearMonth month = yearMonth.isBlank()
+                ? YearMonth.now()
+                : YearMonth.parse(yearMonth); // format: "2025-01"
+        reportScheduler.triggerManually(month);
+        return ResponseEntity.ok("Report triggered for " + month);
     }
 }

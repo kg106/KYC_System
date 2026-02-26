@@ -46,12 +46,28 @@ public class JwtTokenProvider {
 
     // get username from Jwt token
     public String getUsername(String token) {
-        Claims claims = Jwts.parserBuilder()
+        Claims claims = getClaims(token);
+        return claims.getSubject();
+    }
+
+    // get remaining expiration time in milliseconds
+    public long getExpirationRemaining(String token) {
+        try {
+            Claims claims = getClaims(token);
+            Date expiration = claims.getExpiration();
+            long remaining = expiration.getTime() - System.currentTimeMillis();
+            return remaining > 0 ? remaining : 0;
+        } catch (Exception e) {
+            return 0; // If token is invalid or already expired
+        }
+    }
+
+    private Claims getClaims(String token) {
+        return Jwts.parserBuilder()
                 .setSigningKey(key())
                 .build()
                 .parseClaimsJws(token)
                 .getBody();
-        return claims.getSubject();
     }
 
     // validate Jwt token

@@ -22,6 +22,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final UserDetailsService userDetailsService;
+    private final com.example.kyc_system.service.TokenBlacklistService tokenBlacklistService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -31,8 +32,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // get JWT token from http request
         String token = getTokenFromRequest(request);
 
-        // validate token
-        if (StringUtils.hasText(token) && jwtTokenProvider.validateToken(token)) {
+        // validate token and check if blacklisted
+        if (StringUtils.hasText(token) && jwtTokenProvider.validateToken(token)
+                && !tokenBlacklistService.isTokenBlacklisted(token)) {
 
             // get username from token
             String username = jwtTokenProvider.getUsername(token);

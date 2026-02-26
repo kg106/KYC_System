@@ -27,6 +27,7 @@ public class AuthController {
     private final PasswordResetService passwordResetService;
     private final RefreshTokenService refreshTokenService;
     private final CookieUtil cookieUtil;
+    private final com.example.kyc_system.service.TokenBlacklistService tokenBlacklistService;
 
     // Build Login REST API
     @PostMapping("/login")
@@ -87,9 +88,18 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    @io.swagger.v3.oas.annotations.Operation(summary = "User Logout", description = "Revokes the refresh token and clears the cookie")
+    @io.swagger.v3.oas.annotations.Operation(summary = "User Logout", description = "Revokes the refresh token, blacklists the access token, and clears the cookie")
     public ResponseEntity<String> logout(@CookieValue(name = "refreshToken", required = false) String refreshToken,
+            jakarta.servlet.http.HttpServletRequest request,
             HttpServletResponse response) {
+
+        // Blacklist Access Token
+        String bearerToken = request.getHeader("Authorization");
+        if (org.springframework.util.StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
+            String accessToken = bearerToken.substring(7);
+            tokenBlacklistService.blacklistToken(accessToken);
+        }
+
         if (refreshToken != null && !refreshToken.isEmpty()) {
             try {
                 String familyId = refreshToken.split(":")[0];

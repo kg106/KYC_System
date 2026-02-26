@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -43,4 +44,23 @@ public interface KycRequestRepository extends JpaRepository<KycRequest, Long>, J
     @Query("UPDATE KycRequest k SET k.status = :newStatus, k.updatedAt = CURRENT_TIMESTAMP WHERE k.id = :id AND k.status = :oldStatus")
     int updateStatusIfPending(@Param("id") Long id, @Param("newStatus") String newStatus,
             @Param("oldStatus") String oldStatus);
+
+    @Query("""
+                SELECT k.status, COUNT(k) FROM KycRequest k
+                WHERE k.submittedAt >= :from AND k.submittedAt < :to
+                GROUP BY k.status
+            """)
+    List<Object[]> countByStatusBetween(
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to);
+
+    @Query("""
+                SELECT k.documentType, COUNT(k) FROM KycRequest k
+                WHERE k.submittedAt >= :from AND k.submittedAt < :to
+                GROUP BY k.documentType
+            """)
+    List<Object[]> countByDocumentTypeBetween(
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to);
+
 }

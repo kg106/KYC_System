@@ -50,6 +50,9 @@ class AuthControllerTest {
     @MockBean
     private com.example.kyc_system.util.CookieUtil cookieUtil;
 
+    @MockBean
+    private com.example.kyc_system.service.TokenBlacklistService tokenBlacklistService;
+
     @Autowired
     private ObjectMapper objectMapper;
 

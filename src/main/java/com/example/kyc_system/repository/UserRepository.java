@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 @Repository
@@ -23,4 +24,13 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
   Optional<User> matchUserData(@Param("name") String name, @Param("dob") LocalDate dob);
 
   Optional<User> findByEmail(String email);
+
+  @Query("""
+        SELECT COUNT(u) FROM User u
+        WHERE u.createdAt >= :from AND u.createdAt < :to
+      """)
+  long countNewUsersBetween(
+      @Param("from") LocalDateTime from,
+      @Param("to") LocalDateTime to);
+
 }
