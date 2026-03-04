@@ -28,6 +28,9 @@ public class User extends BaseEntity {
     @Column(name = "mobile_number", nullable = false, unique = true, length = 15)
     private String mobileNumber;
 
+    @Column(name = "tenant_id", nullable = false, length = 50)
+    private String tenantId;
+
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 
@@ -47,5 +50,9 @@ public class User extends BaseEntity {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private java.util.Set<KycRequest> kycRequests = new java.util.HashSet<>();
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "tenant_id", referencedColumnName = "tenant_id", insertable = false, updatable = false)
+    private Tenant tenant;
 
 }

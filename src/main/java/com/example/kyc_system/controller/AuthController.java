@@ -35,9 +35,9 @@ public class AuthController {
     public ResponseEntity<JwtAuthResponse> login(@jakarta.validation.Valid @RequestBody LoginDTO loginDTO,
             HttpServletResponse response) {
         String token = userService.login(loginDTO);
-        UserDTO user = userService.getUserByEmail(loginDTO.getEmail());
+        UserDTO user = userService.getUserByEmailDirect(loginDTO.getEmail());
 
-        String refreshToken = refreshTokenService.createRefreshToken(user.getId());
+        String refreshToken = refreshTokenService.createRefreshTokenDirect(user.getId());
         response.addCookie(cookieUtil.createRefreshTokenCookie(refreshToken));
 
         JwtAuthResponse jwtAuthResponse = new JwtAuthResponse();

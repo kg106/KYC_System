@@ -22,6 +22,9 @@ public class KycRequest extends BaseEntity {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @Column(name = "tenant_id", nullable = false, length = 50)
+    private String tenantId;
+
     @Column(length = 20, nullable = false)
     private String status;
 

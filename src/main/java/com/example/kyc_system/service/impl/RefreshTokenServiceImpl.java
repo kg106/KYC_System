@@ -2,6 +2,7 @@ package com.example.kyc_system.service.impl;
 
 import com.example.kyc_system.dto.JwtAuthResponse;
 import com.example.kyc_system.dto.UserDTO;
+import com.example.kyc_system.entity.User;
 import com.example.kyc_system.security.JwtTokenProvider;
 import com.example.kyc_system.service.RefreshTokenService;
 import com.example.kyc_system.service.UserService;
@@ -20,6 +21,8 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
     private final StringRedisTemplate redisTemplate;
     private final UserService userService;
     private final JwtTokenProvider jwtTokenProvider;
+    // Add to existing fields
+    private final com.example.kyc_system.repository.UserRepository userRepository;
 
     @Value("${app.jwt-refresh-expiration-milliseconds}")
     private long refreshExpirationMs;
@@ -42,6 +45,30 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
         redisTemplate.opsForValue().set(redisKey, redisValue, Duration.ofMillis(refreshExpirationMs));
 
         // Add family to user's list of families
+        String userFamiliesKey = USER_FAMILIES_PREFIX + email;
+        redisTemplate.opsForSet().add(userFamiliesKey, familyId);
+
+        return familyId + ":" + tokenValue;
+    }
+
+    // In RefreshTokenServiceImpl — add this method
+    @Override
+    public String createRefreshTokenDirect(Long userId) {
+        // Bypasses UserService.getUserById() tenant check
+        // Used during login where TenantContext may not be set
+        User user = userRepository.findById(userId) // ← inject UserRepository
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        String email = user.getEmail();
+
+        String familyId = UUID.randomUUID().toString();
+        String tokenValue = UUID.randomUUID().toString();
+
+        String redisKey = RT_FAMILY_PREFIX + familyId;
+        String redisValue = email + ":" + tokenValue;
+
+        redisTemplate.opsForValue().set(redisKey, redisValue,
+                Duration.ofMillis(refreshExpirationMs));
+
         String userFamiliesKey = USER_FAMILIES_PREFIX + email;
         redisTemplate.opsForSet().add(userFamiliesKey, familyId);
 

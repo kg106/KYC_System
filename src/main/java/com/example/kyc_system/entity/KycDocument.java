@@ -23,6 +23,9 @@ public class KycDocument extends BaseEntity {
     @JoinColumn(name = "kyc_request_id", nullable = false)
     private KycRequest kycRequest;
 
+    @Column(name = "tenant_id", nullable = false, length = 50)
+    private String tenantId;
+
     @Column(name = "document_type", length = 20, nullable = false)
     private String documentType;
 

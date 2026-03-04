@@ -25,18 +25,49 @@ public class JwtTokenProvider {
         return generateTokenFromUsername(username);
     }
 
+    public String generateToken(Authentication authentication, String tenantId) {
+        String username = authentication.getName();
+        Date currentDate = new Date();
+        Date expireDate = new Date(currentDate.getTime() + jwtExpirationDate);
+
+        return Jwts.builder()
+                .setSubject(username)
+                .claim("tenantId", tenantId)
+                .setIssuedAt(currentDate)
+                .setExpiration(expireDate)
+                .signWith(key())
+                .compact();
+    }
+
+    public String getTenantId(String token) {
+        Claims claims = getClaims(token);
+        return claims.get("tenantId", String.class);
+    }
+
     // generate JWT token from username directly (used for refresh)
     public String generateTokenFromUsername(String username) {
         Date currentDate = new Date();
         Date expireDate = new Date(currentDate.getTime() + jwtExpirationDate);
 
-        String token = Jwts.builder()
+        return Jwts.builder()
                 .setSubject(username)
                 .setIssuedAt(new Date())
                 .setExpiration(expireDate)
                 .signWith(key())
                 .compact();
-        return token;
+    }
+
+    public String generateTokenFromUsername(String username, String tenantId) {
+        Date currentDate = new Date();
+        Date expireDate = new Date(currentDate.getTime() + jwtExpirationDate);
+
+        return Jwts.builder()
+                .setSubject(username)
+                .claim("tenantId", tenantId)
+                .setIssuedAt(currentDate)
+                .setExpiration(expireDate)
+                .signWith(key())
+                .compact();
     }
 
     private Key key() {
@@ -88,4 +119,5 @@ public class JwtTokenProvider {
             throw new RuntimeException("JWT claims string is empty.");
         }
     }
+
 }

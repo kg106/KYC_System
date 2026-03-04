@@ -15,6 +15,8 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
@@ -29,17 +31,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain) throws ServletException, IOException {
 
-        // get JWT token from http request
         String token = getTokenFromRequest(request);
 
-        // validate token and check if blacklisted
         if (StringUtils.hasText(token) && jwtTokenProvider.validateToken(token)
                 && !tokenBlacklistService.isTokenBlacklisted(token)) {
 
-            // get username from token
             String username = jwtTokenProvider.getUsername(token);
+            String tenantId = jwtTokenProvider.getTenantId(token); // ← extract tenantId
 
-            // load the user associated with token
             UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
             UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
@@ -47,10 +46,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     null,
                     userDetails.getAuthorities());
 
-            authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+            // Store tenantId in authentication details
+            // TenantResolutionFilter will read it from here
+            Map<String, String> details = new HashMap<>();
+            details.put("tenantId", tenantId != null ? tenantId : "");
+            authenticationToken.setDetails(details);
 
             SecurityContextHolder.getContext().setAuthentication(authenticationToken);
-
         }
 
         filterChain.doFilter(request, response);

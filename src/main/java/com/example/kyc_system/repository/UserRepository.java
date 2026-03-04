@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -16,21 +17,44 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
 
   Optional<User> findById(Long id);
 
+  Optional<User> findByEmailAndTenantId(String email, String tenantId);
+
+  Optional<User> findByIdAndTenantId(Long id, String tenantId);
+
+  List<User> findByTenantId(String tenantId);
+
+  long countByTenantId(String tenantId);
+
+  boolean existsByEmailAndTenantId(String email, String tenantId);
+
   @Query("""
           SELECT u FROM User u
           WHERE LOWER(u.name) = LOWER(:name)
             AND u.dob = :dob
+            AND u.tenantId = :tenantId
       """)
-  Optional<User> matchUserData(@Param("name") String name, @Param("dob") LocalDate dob);
+  Optional<User> matchUserData(@Param("name") String name,
+      @Param("dob") LocalDate dob,
+      @Param("tenantId") String tenantId);
 
   Optional<User> findByEmail(String email);
 
   @Query("""
-        SELECT COUNT(u) FROM User u
-        WHERE u.createdAt >= :from AND u.createdAt < :to
+          SELECT COUNT(u) FROM User u
+          WHERE u.tenantId = :tenantId
+            AND u.createdAt >= :from
+            AND u.createdAt < :to
       """)
-  long countNewUsersBetween(
+  long countNewUsersBetween(@Param("tenantId") String tenantId,
       @Param("from") LocalDateTime from,
+      @Param("to") LocalDateTime to);
+
+  @Query("""
+          SELECT COUNT(u) FROM User u
+          WHERE u.createdAt >= :from
+            AND u.createdAt < :to
+      """)
+  long countNewUsersBetween(@Param("from") LocalDateTime from,
       @Param("to") LocalDateTime to);
 
 }

@@ -36,4 +36,6 @@ build/
 uploads/
 logs/
 *.log
-application.properties
+application.properties*.sql
+
+*.sql

@@ -26,6 +26,7 @@ public class PasswordResetServiceImpl implements PasswordResetService {
 
     private final UserRepository userRepository;
     private final JavaMailSender mailSender;
+    private final RefreshTokenService refreshTokenService;
 
     // In-memory storage for tokens and rate limiting
     private final Map<String, TokenInfo> tokenStorage = new ConcurrentHashMap<>();
@@ -116,9 +117,12 @@ public class PasswordResetServiceImpl implements PasswordResetService {
         user.setPasswordHash(PasswordUtil.hashPassword(resetDTO.getNewPassword()));
         userRepository.save(user);
 
+        // Revoke ALL refresh tokens for this user (log out from every device)
+        refreshTokenService.revokeAllForUser(user.getId());
+
         // Remove token after successful reset
         tokenStorage.remove(email);
-        log.info("Password successfully reset for user: {}", email);
+        log.info("Password successfully reset for user: {}. All sessions revoked.", email);
     }
 
     private void checkRateLimit(String email) {

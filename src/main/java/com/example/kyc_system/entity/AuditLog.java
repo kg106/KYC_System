@@ -38,6 +38,9 @@ public class AuditLog {
     private String ipAddress;
     private String userAgent;
     private String correlationId;
+
+    @Column(name = "tenant_id", nullable = false, length = 50)
+    private String tenantId;
     private String requestId;
 
     @CreationTimestamp

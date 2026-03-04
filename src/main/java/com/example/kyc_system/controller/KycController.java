@@ -135,8 +135,8 @@ public class KycController {
     @PreAuthorize("hasRole('ADMIN')")
     @io.swagger.v3.oas.annotations.Operation(summary = "Monthly KYC Report", description = "Manually generates and emails the KYC report. By default, it sends the report for the current month. You can also specify a past month to generate a historical report.")
     public ResponseEntity<String> triggerReport(
-            @io.swagger.v3.oas.annotations.Parameter(description = "Optional: Provide a specific month in YYYY-MM format (e.g. 2025-01). If left blank, it generates the report for the current month.") @RequestParam String yearMonth) {
-        YearMonth month = yearMonth.isBlank()
+            @io.swagger.v3.oas.annotations.Parameter(description = "Optional: Provide a specific month in YYYY-MM format (e.g. 2025-01). If left blank, it generates the report for the current month.") @RequestParam(required = false) String yearMonth) {
+        YearMonth month = (yearMonth == null || yearMonth.isBlank())
                 ? YearMonth.now()
                 : YearMonth.parse(yearMonth); // format: "2025-01"
         reportScheduler.triggerManually(month);

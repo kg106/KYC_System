@@ -1,15 +1,22 @@
 package com.example.kyc_system.service;
 
 import com.example.kyc_system.entity.KycRequest;
+import com.example.kyc_system.entity.Tenant;
 import com.example.kyc_system.entity.User;
 import com.example.kyc_system.enums.KycStatus;
+import com.example.kyc_system.exception.BusinessException;
 import com.example.kyc_system.repository.KycRequestRepository;
+import com.example.kyc_system.repository.TenantRepository;
+
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.transaction.annotation.Propagation;
+
+import com.example.kyc_system.context.TenantContext;
 import com.example.kyc_system.dto.KycRequestSearchDTO;
 import com.example.kyc_system.repository.specification.KycRequestSpecification;
 
@@ -24,6 +31,7 @@ public class KycRequestServiceImpl implements KycRequestService {
     private final KycRequestRepository repository;
     private final UserService userService;
     private final AuditLogService auditLogService;
+    private final TenantRepository tenantRepository; // ← add this
 
     private String getCurrentUser() {
         if (org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication() != null) {
@@ -34,20 +42,30 @@ public class KycRequestServiceImpl implements KycRequestService {
     }
 
     @Override
-    @org.springframework.transaction.annotation.Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public KycRequest createOrReuse(Long userId, String documentType) {
-        LocalDateTime startOfDay = LocalDateTime.now().with(java.time.LocalTime.MIN);
+        String tenantId = TenantContext.getTenant();
+        LocalDateTime startOfDay = LocalDateTime.now()
+                .with(java.time.LocalTime.MIN);
 
-        // Sum attemptNumber across all requests for the user today
-        long totalAttemptsToday = repository.sumAttemptNumberByUserIdAndSubmittedAtGreaterThanEqual(userId, startOfDay);
+        // Use tenant-specific daily limit
+        Tenant tenant = tenantRepository.findByTenantId(tenantId)
+                .orElseThrow(() -> new RuntimeException("Tenant not found"));
 
-        if (totalAttemptsToday >= 5) {
-            throw new RuntimeException("Daily KYC attempt limit reached (5). Please try again tomorrow.");
+        long totalAttemptsToday = repository
+                .sumAttemptNumberByUserIdAndTenantIdAndSubmittedAtAfter(
+                        userId, tenantId, startOfDay);
+
+        if (totalAttemptsToday >= tenant.getMaxDailyAttempts()) {
+            throw new RuntimeException(
+                    "Daily KYC attempt limit reached ("
+                            + tenant.getMaxDailyAttempts()
+                            + "). Please try again tomorrow.");
         }
 
-        // Only reuse failed requests for the SAME document type
-        Optional<KycRequest> latestRequest = repository.findTopByUserIdAndDocumentTypeOrderByCreatedAtDesc(userId,
-                documentType);
+        Optional<KycRequest> latestRequest = repository
+                .findTopByUserIdAndDocumentTypeAndTenantIdOrderByCreatedAtDesc(
+                        userId, documentType, tenantId);
 
         if (latestRequest.isPresent()) {
             KycRequest request = latestRequest.get();
@@ -57,17 +75,18 @@ public class KycRequestServiceImpl implements KycRequestService {
                     status.equals(KycStatus.SUBMITTED.name()) ||
                     status.equals(KycStatus.PROCESSING.name())) {
                 throw new RuntimeException(
-                        "Only one KYC request for " + documentType + " can be processed at a time. Please wait.");
+                        "Only one KYC request for " + documentType
+                                + " can be processed at a time.");
             }
 
             if (status.equals(KycStatus.FAILED.name())) {
                 request.setAttemptNumber(request.getAttemptNumber() + 1);
                 request.setStatus(KycStatus.SUBMITTED.name());
                 request.setSubmittedAt(LocalDateTime.now());
-
-                auditLogService.logAction("SUBMIT", "KycRequest", request.getId(),
-                        "Re-submitted KYC request for " + documentType, getCurrentUser());
-
+                auditLogService.logAction("SUBMIT", "KycRequest",
+                        request.getId(),
+                        "Re-submitted KYC request for " + documentType,
+                        getCurrentUser());
                 return request;
             }
         }
@@ -79,13 +98,18 @@ public class KycRequestServiceImpl implements KycRequestService {
         newRequest.setStatus(KycStatus.SUBMITTED.name());
         newRequest.setAttemptNumber(1);
         newRequest.setSubmittedAt(LocalDateTime.now());
+        newRequest.setTenantId(tenantId); // ← scope to tenant
+
         try {
-            KycRequest savedRequest = repository.save(newRequest);
-            auditLogService.logAction("SUBMIT", "KycRequest", savedRequest.getId(),
-                    "Submitted new KYC request for " + documentType, getCurrentUser());
-            return savedRequest;
-        } catch (org.springframework.dao.DataIntegrityViolationException ex) {
-            throw new com.example.kyc_system.exception.BusinessException("Only one request can be processed at a time");
+            KycRequest saved = repository.save(newRequest);
+            auditLogService.logAction("SUBMIT", "KycRequest",
+                    saved.getId(),
+                    "Submitted new KYC request for " + documentType,
+                    getCurrentUser());
+            return saved;
+        } catch (DataIntegrityViolationException ex) {
+            throw new BusinessException(
+                    "Only one request can be processed at a time");
         }
     }
 
