@@ -36,7 +36,7 @@ build/
 uploads/
 logs/
 *.log
-application.properties
+src/main/resources/application.properties
 application.properties*.sql
 
 *.sql
