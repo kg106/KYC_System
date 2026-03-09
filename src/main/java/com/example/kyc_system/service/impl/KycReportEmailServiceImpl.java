@@ -19,6 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 public class KycReportEmailServiceImpl {
 
   private final JavaMailSender mailSender;
+  private final com.example.kyc_system.service.KycReportPdfService pdfService;
 
   @Value("${kyc.report.recipients}") // comma-separated emails
   private String recipients;
@@ -29,6 +30,9 @@ public class KycReportEmailServiceImpl {
   @Async
   public void sendMonthlyReport(KycMonthlyReportDTO report) {
     try {
+      log.info("Generating PDF for report range: {} to {}", report.getDateFrom(), report.getDateTo());
+      byte[] pdfContent = pdfService.generateReportPdf(report);
+
       MimeMessage message = mailSender.createMimeMessage();
       MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
@@ -36,153 +40,61 @@ public class KycReportEmailServiceImpl {
       helper.setTo(recipients.split(","));
       helper.setSubject(String.format("📊 KYC Report - [%s to %s]",
           report.getDateFrom(), report.getDateTo()));
-      helper.setText(buildHtmlBody(report), true); // true = isHtml
+
+      String emailBody = buildHtmlBody(report);
+      helper.setText(emailBody, true);
+
+      // Attach PDF
+      String filename = String.format("KYC_Report_%s_to_%s.pdf",
+          report.getDateFrom(), report.getDateTo());
+      helper.addAttachment(filename, new org.springframework.core.io.ByteArrayResource(pdfContent));
 
       mailSender.send(message);
-      log.info("KYC report sent successfully for range: {} to {}",
+      log.info("KYC report email sent with PDF attachment for range: {} to {}",
           report.getDateFrom(), report.getDateTo());
 
     } catch (Exception e) {
-      log.error("Failed to send monthly KYC report: {}", e.getMessage(), e);
+      log.error("Failed to send monthly KYC report with PDF: {}", e.getMessage(), e);
     }
   }
 
   private String buildHtmlBody(KycMonthlyReportDTO r) {
     String dateRange = String.format("%s to %s", r.getDateFrom(), r.getDateTo());
 
-    StringBuilder docRows = new StringBuilder();
-    r.getBreakdownByDocumentType().forEach((type, count) -> docRows.append(String.format("""
-        <tr>
-        <td style="padding:8px 12px; border-bottom:1px solid #eee;">%s</td>
-        <td style="padding:8px 12px; border-bottom:1px solid #eee;
-        text-align:center;">%d</td>
-        </tr>
-        """, type, count)));
-
-    StringBuilder kycDataRows = new StringBuilder();
-    r.getKycData().forEach(d -> {
-      String statusColor = "#333";
-      if ("VERIFIED".equals(d.getStatus()))
-        statusColor = "#34a853";
-      else if ("FAILED".equals(d.getStatus()))
-        statusColor = "#ea4335";
-
-      kycDataRows.append(String.format("""
-          <tr>
-          <td style="padding:8px 12px; border-bottom:1px solid #eee;">%d</td>
-          <td style="padding:8px 12px; border-bottom:1px solid #eee;"><b>%s</b></td>
-          <td style="padding:8px 12px; border-bottom:1px solid #eee;">%s</td>
-          <td style="padding:8px 12px; border-bottom:1px solid #eee; text-align:center; color:%s;"><b>%s</b></td>
-          <td style="padding:8px 12px; border-bottom:1px solid #eee;">%s</td>
-          <td style="padding:8px 12px; border-bottom:1px solid #eee;">%s</td>
-          <td style="padding:8px 12px; border-bottom:1px solid #eee;">%s</td>
-          <td style="padding:8px 12px; border-bottom:1px solid #eee;">%s</td>
-          <td style="padding:8px 12px; border-bottom:1px solid #eee; text-align:center;">%d</td>
-          <td style="padding:8px 12px; border-bottom:1px solid #eee; font-size:11px;">%s</td>
-          </tr>
-          """,
-          d.getUserId(),
-          d.getUserName(),
-          d.getDob() != null ? d.getDob().toString() : "-",
-          statusColor, d.getStatus(),
-          d.getMobileNumber() != null ? d.getMobileNumber() : "-",
-          d.getEmail() != null ? d.getEmail() : "-",
-          d.getTenantName() != null ? d.getTenantName() : "-",
-          d.getDocumentType(),
-          d.getAttemptNumber(),
-          d.getDecisionReason() != null ? d.getDecisionReason() : "-"));
-    });
-
     return String.format("""
-        <html><body
-        style="font-family:Arial,sans-serif;color:#333;max-width:800px;margin:auto;">
-        <div style="background:#1a73e8;padding:24px;border-radius:8px 8px 0 0;">
-        <h1 style="color:#fff;margin:0;font-size:22px;">📊 KYC Monthly Report</h1>
-        <p style="color:#cce5ff;margin:4px 0 0;">%s</p>
-        </div>
+        <html>
+        <body style="font-family:Arial,sans-serif;color:#333;max-width:600px;margin:auto;padding:20px;">
+          <div style="background:#1a73e8;padding:24px;border-radius:8px;color:#fff;text-align:center;">
+            <h1 style="margin:0;font-size:22px;">📊 KYC Report Ready</h1>
+            <p style="margin:4px 0 0;color:#cce5ff;">Reporting Period: %s</p>
+          </div>
 
-        <div style="background:#f9f9f9;padding:24px;">
+          <div style="padding:24px;line-height:1.6;">
+            <p>Hello,</p>
+            <p>The monthly KYC processing report for the period <b>%s</b> has been generated.</p>
+            <p>Please find the detailed report attached as a PDF file.</p>
 
-        <!-- Summary Cards -->
-        <div style="display:flex;gap:12px;margin-bottom:24px;">
-        %s %s %s %s
-        </div>
+            <div style="margin:30px 0;padding:15px;background:#f8f9fa;border-left:4px solid #1a73e8;">
+              <b>Summary Highlights:</b><br/>
+              • Total Requests: %d<br/>
+              • Passed: %d<br/>
+              • Failed: %d<br/>
+              • Pass Rate: <b>%.1f%%</b>
+            </div>
 
-        <!-- Pass Rate -->
-        <div
-        style="background:#fff;border-radius:6px;padding:16px;margin-bottom:20px;
-        border-left:4px solid #1a73e8;">
-        <strong>Pass Rate:</strong>
-        <span style="font-size:24px;color:#1a73e8;margin-left:8px;">%.1f%%</span>
-        </div>
-
-        <!-- Document Breakdown -->
-        <h3 style="margin-bottom:8px;">Breakdown by Document Type</h3>
-        <table
-        style="width:100%%;border-collapse:collapse;background:#fff;border-radius:6px;">
-        <thead>
-        <tr style="background:#e8f0fe;">
-        <th style="padding:10px 12px;text-align:left;">Document Type</th>
-        <th style="padding:10px 12px;text-align:center;">Count</th>
-        </tr>
-        </thead>
-        <tbody>%s</tbody>
-        </table>
-
-        <!-- User Stats -->
-        <div style="background:#fff;border-radius:6px;padding:16px;margin-top:20px;">
-        <strong>User Statistics</strong><br/>
-        New Registrations: <b>%d</b> &nbsp;|&nbsp; Total Active Users: <b>%d</b>
-        </div>
-
-        <!-- Detailed KYC Report -->
-        <h3 style="margin-top:24px;margin-bottom:8px;">Detailed KYC Report</h3>
-        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
-        <table
-        style="width:100%%;border-collapse:collapse;background:#fff;border-radius:6px;font-size:11px;min-width:1000px;">
-        <thead>
-        <tr style="background:#e8f0fe;">
-        <th style="padding:10px 12px;text-align:left;border-bottom:2px solid #1a73e8;">UID</th>
-        <th style="padding:10px 12px;text-align:left;border-bottom:2px solid #1a73e8;">User Name</th>
-        <th style="padding:10px 12px;text-align:left;border-bottom:2px solid #1a73e8;">DOB</th>
-        <th style="padding:10px 12px;text-align:center;border-bottom:2px solid #1a73e8;">Status</th>
-        <th style="padding:10px 12px;text-align:left;border-bottom:2px solid #1a73e8;">Mobile</th>
-        <th style="padding:10px 12px;text-align:left;border-bottom:2px solid #1a73e8;">Email</th>
-        <th style="padding:10px 12px;text-align:left;border-bottom:2px solid #1a73e8;">Tenant</th>
-        <th style="padding:10px 12px;text-align:left;border-bottom:2px solid #1a73e8;">Doc Type</th>
-        <th style="padding:10px 12px;text-align:center;border-bottom:2px solid #1a73e8;">Try</th>
-        <th style="padding:10px 12px;text-align:left;border-bottom:2px solid #1a73e8;">Reason</th>
-        </tr>
-        </thead>
-        <tbody>%s</tbody>
-        </table>
-        </div>
-
-        <p style="color:#999;font-size:12px;margin-top:24px;">
-        This is an automated report generated by the KYC System.
-        </p>
-        </div>
-        </body></html>
+            <p>If you have any questions regarding this report, please contact the system administrator.</p>
+            <br/>
+            <p style="color:#999;font-size:12px;">This is an automated message. Please do not reply.</p>
+          </div>
+        </body>
+        </html>
         """,
         dateRange,
-        summaryCard("Total", String.valueOf(r.getTotalRequests()), "#1a73e8"),
-        summaryCard("✅ Passed", String.valueOf(r.getVerified()), "#34a853"),
-        summaryCard("❌ Failed", String.valueOf(r.getFailed()), "#ea4335"),
-        summaryCard("⏳ Pending", String.valueOf(r.getPending()), "#fbbc04"),
-        r.getPassRate(),
-        docRows,
-        r.getNewUsersRegistered(),
-        r.getTotalActiveUsers(),
-        kycDataRows);
+        dateRange,
+        r.getTotalRequests(),
+        r.getVerified(),
+        r.getFailed(),
+        r.getPassRate());
   }
 
-  private String summaryCard(String label, String value, String color) {
-    return String.format("""
-            <div style="flex:1;background:#fff;border-radius:6px;padding:16px;
-                        text-align:center;border-top:3px solid %s;">
-              <div style="font-size:28px;font-weight:bold;color:%s;">%s</div>
-              <div style="font-size:13px;color:#666;margin-top:4px;">%s</div>
-            </div>
-        """, color, color, value, label);
-  }
 }
