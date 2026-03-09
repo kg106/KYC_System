@@ -1,10 +1,11 @@
 package com.example.kyc_system.service;
 
-import java.time.YearMonth;
+import java.time.LocalDate;
+//import java.time.YearMonth;
 
 import com.example.kyc_system.dto.KycMonthlyReportDTO;
 
-// service/KycReportService.java
+/** Service interface for generating aggregate monthly KYC reports. */
 public interface KycReportService {
-    KycMonthlyReportDTO generateMonthlyReport(YearMonth month);
+    KycMonthlyReportDTO generateMonthlyReport(LocalDate dateFrom, LocalDate dateTo);
 }

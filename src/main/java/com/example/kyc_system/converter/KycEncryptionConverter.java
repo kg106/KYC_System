@@ -6,6 +6,16 @@ import jakarta.persistence.Converter;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
+/**
+ * JPA AttributeConverter that automatically encrypts/decrypts sensitive string
+ * fields
+ * (e.g., document numbers) when writing to and reading from the database.
+ * Used via @Convert annotation on entity fields like
+ * KycDocument.documentNumber.
+ *
+ * @Lazy on EncryptionUtil avoids circular dependency during Spring context
+ *       initialization.
+ */
 @Component
 @Converter
 public class KycEncryptionConverter implements AttributeConverter<String, String> {
@@ -16,6 +26,7 @@ public class KycEncryptionConverter implements AttributeConverter<String, String
         this.encryptionUtil = encryptionUtil;
     }
 
+    /** Encrypts the value before storing it in the database column. */
     @Override
     public String convertToDatabaseColumn(String attribute) {
         if (attribute == null || attribute.isEmpty()) {
@@ -24,6 +35,10 @@ public class KycEncryptionConverter implements AttributeConverter<String, String
         return encryptionUtil.encrypt(attribute);
     }
 
+    /**
+     * Decrypts the value when reading from the database. Falls back to raw value on
+     * error (for legacy plain text data).
+     */
     @Override
     public String convertToEntityAttribute(String dbData) {
         if (dbData == null || dbData.isEmpty()) {

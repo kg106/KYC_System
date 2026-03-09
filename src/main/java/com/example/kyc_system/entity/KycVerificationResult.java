@@ -42,4 +42,3 @@ public class KycVerificationResult {
     @CreationTimestamp
     private LocalDateTime createdAt;
 }
-

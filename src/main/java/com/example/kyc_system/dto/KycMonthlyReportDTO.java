@@ -1,6 +1,7 @@
 package com.example.kyc_system.dto;
 
-import java.time.YearMonth;
+import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
 
 import lombok.Builder;
@@ -10,7 +11,8 @@ import lombok.Data;
 @Data
 @Builder
 public class KycMonthlyReportDTO {
-    private YearMonth reportMonth;
+    private LocalDate dateFrom;
+    private LocalDate dateTo;
     private long totalRequests;
     private long verified;
     private long failed;
@@ -19,4 +21,5 @@ public class KycMonthlyReportDTO {
     private Map<String, Long> breakdownByDocumentType; // PAN=12, AADHAAR=8, etc.
     private long newUsersRegistered;
     private long totalActiveUsers;
+    private List<KycReportDataDTO> kycData;
 }

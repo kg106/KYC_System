@@ -28,10 +28,7 @@ public class KycDocumentServiceImpl implements KycDocumentService {
     private final KycFileValidator fileValidator;
 
     @Override
-    public KycDocument save(Long requestId,
-            DocumentType documentType,
-            MultipartFile file,
-            String documentNumber) {
+    public KycDocument save(Long requestId, DocumentType documentType, MultipartFile file, String documentNumber) {
 
         fileValidator.validate(file);
 

@@ -14,4 +14,3 @@ public interface KycVerificationResultRepository extends JpaRepository<KycVerifi
 
     List<KycVerificationResult> findByFinalStatus(String finalStatus);
 }
-

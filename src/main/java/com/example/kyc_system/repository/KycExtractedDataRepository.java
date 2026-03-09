@@ -11,14 +11,13 @@ import java.util.Optional;
 @Repository
 public interface KycExtractedDataRepository extends JpaRepository<KycExtractedData, Long> {
 
-    Optional<KycExtractedData> findByKycDocumentId(Long kycDocumentId);
+  Optional<KycExtractedData> findByKycDocumentId(Long kycDocumentId);
 
-    @Query("""
-        SELECT e FROM KycExtractedData e
-        WHERE e.extractedName IS NOT NULL
-          AND e.extractedDob IS NOT NULL
-          AND e.extractedDocumentNumber IS NOT NULL
-    """)
-    List<KycExtractedData> findCompleteExtractions();
+  @Query("""
+          SELECT e FROM KycExtractedData e
+          WHERE e.extractedName IS NOT NULL
+            AND e.extractedDob IS NOT NULL
+            AND e.extractedDocumentNumber IS NOT NULL
+      """)
+  List<KycExtractedData> findCompleteExtractions();
 }
-

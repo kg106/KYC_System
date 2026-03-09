@@ -19,20 +19,43 @@ public class SecurityService {
             return false;
         }
 
-        // Admin has full access
-        if (authentication.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"))) {
+        // 1. Super Admin has full global access (unscoped)
+        if (hasRole(authentication, "ROLE_SUPER_ADMIN")) {
             return true;
         }
 
-        // Check if current user email matches target user email
-        String currentEmail = authentication.getName();
+        // 2. Fetch target user to check tenant
+        UserDTO targetUser;
         try {
-            UserDTO targetUser = userService.getUserById(userId);
-            return targetUser.getEmail().equals(currentEmail);
+            // Note: We use getUserByEmailDirect or a similar bypass if needed,
+            // but here we check if the target user belongs to the same tenant as the admin.
+            targetUser = userService.getUserById(userId);
         } catch (Exception e) {
             return false;
         }
+
+        // 3. Tenant Admin and Admin have access to users within their own tenant
+        if (hasRole(authentication, "ROLE_TENANT_ADMIN") || hasRole(authentication, "ROLE_ADMIN")) {
+            // Get current user's tenant (passed in JWT details by JwtAuthenticationFilter)
+            String adminTenantId = getTenantId(authentication);
+            return targetUser.getTenantId() != null && targetUser.getTenantId().equals(adminTenantId);
+        }
+
+        // 4. Regular User can only access their own data
+        String currentEmail = authentication.getName();
+        return targetUser.getEmail().equals(currentEmail);
+    }
+
+    private boolean hasRole(Authentication auth, String role) {
+        return auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals(role));
+    }
+
+    @SuppressWarnings("unchecked")
+    private String getTenantId(Authentication auth) {
+        if (auth.getDetails() instanceof java.util.Map) {
+            return ((java.util.Map<String, String>) auth.getDetails()).get("tenantId");
+        }
+        return null;
     }
 
     public boolean isSelf(Long userId) {

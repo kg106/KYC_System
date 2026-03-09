@@ -16,23 +16,31 @@ import org.springframework.web.bind.annotation.CookieValue;
 import jakarta.servlet.http.HttpServletResponse;
 import com.example.kyc_system.service.RefreshTokenService;
 import com.example.kyc_system.util.CookieUtil;
+import io.swagger.v3.oas.annotations.tags.*;
+
+import com.example.kyc_system.service.*;
+import io.swagger.v3.oas.annotations.*;
+import jakarta.validation.*;
+import com.example.kyc_system.dto.*;
+import jakarta.servlet.http.*;
+import org.springframework.util.*;
 
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
-@io.swagger.v3.oas.annotations.tags.Tag(name = "Authentication", description = "Endpoints for user registration and login")
+@Tag(name = "Authentication", description = "Endpoints for user registration and login")
 public class AuthController {
 
     private final UserService userService;
     private final PasswordResetService passwordResetService;
     private final RefreshTokenService refreshTokenService;
     private final CookieUtil cookieUtil;
-    private final com.example.kyc_system.service.TokenBlacklistService tokenBlacklistService;
+    private final TokenBlacklistService tokenBlacklistService;
 
     // Build Login REST API
     @PostMapping("/login")
-    @io.swagger.v3.oas.annotations.Operation(summary = "User Login", description = "Authenticates user and returns a JWT access token")
-    public ResponseEntity<JwtAuthResponse> login(@jakarta.validation.Valid @RequestBody LoginDTO loginDTO,
+    @Operation(summary = "User Login", description = "Authenticates user and returns a JWT access token")
+    public ResponseEntity<JwtAuthResponse> login(@Valid @RequestBody LoginDTO loginDTO,
             HttpServletResponse response) {
         String token = userService.login(loginDTO);
         UserDTO user = userService.getUserByEmailDirect(loginDTO.getEmail());
@@ -49,30 +57,30 @@ public class AuthController {
 
     // Build Register REST API
     @PostMapping("/register")
-    @io.swagger.v3.oas.annotations.Operation(summary = "User Registration", description = "Creates a new user account")
-    public ResponseEntity<UserDTO> register(@jakarta.validation.Valid @RequestBody UserDTO userDTO) {
+    @Operation(summary = "User Registration", description = "Creates a new user account")
+    public ResponseEntity<UserDTO> register(@Valid @RequestBody UserDTO userDTO) {
         UserDTO savedUser = userService.createUser(userDTO);
         return new ResponseEntity<>(savedUser, HttpStatus.CREATED);
     }
 
     @PostMapping("/forgot-password")
-    @io.swagger.v3.oas.annotations.Operation(summary = "Forgot Password (Step 1)", description = "Enter your email to receive a 6-character reset token. This token will be sent to your registered email address and is valid for 15 minutes.")
+    @Operation(summary = "Forgot Password (Step 1)", description = "Enter your email to receive a 6-character reset token. This token will be sent to your registered email address and is valid for 15 minutes.")
     public ResponseEntity<String> generateResetToken(
-            @jakarta.validation.Valid @RequestBody com.example.kyc_system.dto.PasswordResetRequestDTO requestDTO) {
+            @Valid @RequestBody PasswordResetRequestDTO requestDTO) {
         String message = passwordResetService.generateToken(requestDTO.getEmail());
         return ResponseEntity.ok(message);
     }
 
     @PostMapping("/change-password")
-    @io.swagger.v3.oas.annotations.Operation(summary = "Change Password (Step 2)", description = "Use the token received in your email to set a new password. Make sure the 'newPassword' and 'confirmPassword' fields match exactly.")
+    @Operation(summary = "Change Password (Step 2)", description = "Use the token received in your email to set a new password. Make sure the 'newPassword' and 'confirmPassword' fields match exactly.")
     public ResponseEntity<String> resetPassword(
-            @jakarta.validation.Valid @RequestBody com.example.kyc_system.dto.PasswordResetDTO resetDTO) {
+            @Valid @RequestBody PasswordResetDTO resetDTO) {
         passwordResetService.resetPassword(resetDTO);
         return ResponseEntity.ok("Password successfully reset");
     }
 
     @PostMapping("/refresh")
-    @io.swagger.v3.oas.annotations.Operation(summary = "Refresh Token", description = "Uses the HttpOnly refresh token cookie to get a new access token")
+    @Operation(summary = "Refresh Token", description = "Uses the HttpOnly refresh token cookie to get a new access token")
     public ResponseEntity<JwtAuthResponse> refresh(
             @CookieValue(name = "refreshToken", required = false) String refreshToken, HttpServletResponse response) {
         if (refreshToken == null) {
@@ -88,14 +96,14 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    @io.swagger.v3.oas.annotations.Operation(summary = "User Logout", description = "Revokes the refresh token, blacklists the access token, and clears the cookie")
+    @Operation(summary = "User Logout", description = "Revokes the refresh token, blacklists the access token, and clears the cookie")
     public ResponseEntity<String> logout(@CookieValue(name = "refreshToken", required = false) String refreshToken,
-            jakarta.servlet.http.HttpServletRequest request,
+            HttpServletRequest request,
             HttpServletResponse response) {
 
         // Blacklist Access Token
         String bearerToken = request.getHeader("Authorization");
-        if (org.springframework.util.StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
+        if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
             String accessToken = bearerToken.substring(7);
             tokenBlacklistService.blacklistToken(accessToken);
         }

@@ -9,14 +9,20 @@ import io.swagger.v3.oas.annotations.security.SecurityScheme;
 import io.swagger.v3.oas.annotations.security.SecuritySchemes;
 import org.springframework.context.annotation.Configuration;
 
+/**
+ * Swagger/OpenAPI configuration.
+ * Adds two security schemes visible in the Swagger UI:
+ * 1. bearerAuth — JWT Bearer token (Authorization header)
+ * 2. tenantId — Custom X-Tenant-ID header for multi-tenancy
+ */
 @Configuration
 @OpenAPIDefinition(info = @Info(title = "KYC System API", version = "v1"), security = {
-        @SecurityRequirement(name = "bearerAuth"),
-        @SecurityRequirement(name = "tenantId")
+                @SecurityRequirement(name = "bearerAuth"),
+                @SecurityRequirement(name = "tenantId")
 })
 @SecuritySchemes({
-        @SecurityScheme(name = "bearerAuth", type = SecuritySchemeType.HTTP, bearerFormat = "JWT", scheme = "bearer"),
-        @SecurityScheme(name = "tenantId", type = SecuritySchemeType.APIKEY, in = SecuritySchemeIn.HEADER, paramName = "X-Tenant-ID")
+                @SecurityScheme(name = "bearerAuth", type = SecuritySchemeType.HTTP, bearerFormat = "JWT", scheme = "bearer"),
+                @SecurityScheme(name = "tenantId", type = SecuritySchemeType.APIKEY, in = SecuritySchemeIn.HEADER, paramName = "X-Tenant-ID")
 })
 public class SwaggerConfig {
 }

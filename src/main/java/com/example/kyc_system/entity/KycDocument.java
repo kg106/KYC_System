@@ -5,6 +5,7 @@ import com.example.kyc_system.converter.KycEncryptionConverter;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.*;
 
 @Entity
 @Table(name = "kyc_documents")
@@ -54,9 +55,9 @@ public class KycDocument extends BaseEntity {
 
     @OneToMany(mappedBy = "kycDocument", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
-    private java.util.Set<KycExtractedData> extractedData = new java.util.HashSet<>();
+    private Set<KycExtractedData> extractedData = new HashSet<>();
 
     @OneToMany(mappedBy = "kycDocument", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
-    private java.util.Set<KycDocumentVerification> verifications = new java.util.HashSet<>();
+    private Set<KycDocumentVerification> verifications = new HashSet<>();
 }

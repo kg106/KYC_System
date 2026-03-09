@@ -10,6 +10,13 @@ import org.springframework.stereotype.Component;
 import java.security.Key;
 import java.util.Date;
 
+/**
+ * Utility class for JWT (JSON Web Token) operations:
+ * - Token generation (with tenantId claim for multi-tenancy)
+ * - Token validation
+ * - Extracting username and tenantId from tokens
+ * - Calculating remaining TTL (for blacklisting on logout)
+ */
 @Component
 public class JwtTokenProvider {
 
@@ -19,105 +26,72 @@ public class JwtTokenProvider {
     @Value("${app.jwt-expiration-milliseconds}")
     private long jwtExpirationDate;
 
-    // generate JWT token from Authentication
-    public String generateToken(Authentication authentication) {
-        String username = authentication.getName();
-        return generateTokenFromUsername(username);
-    }
-
+    /**
+     * Generates a JWT access token from the authenticated user with a tenantId
+     * claim.
+     * The tenantId is embedded so TenantResolutionFilter can scope requests without
+     * a header.
+     */
     public String generateToken(Authentication authentication, String tenantId) {
         String username = authentication.getName();
-        Date currentDate = new Date();
-        Date expireDate = new Date(currentDate.getTime() + jwtExpirationDate);
+        Date now = new Date();
+        Date expireDate = new Date(now.getTime() + jwtExpirationDate);
 
         return Jwts.builder()
                 .setSubject(username)
-                .claim("tenantId", tenantId)
-                .setIssuedAt(currentDate)
+                .claim("tenantId", tenantId) // Embed tenant in token for multi-tenant scoping
+                .setIssuedAt(now)
                 .setExpiration(expireDate)
                 .signWith(key())
                 .compact();
     }
 
-    public String getTenantId(String token) {
-        Claims claims = getClaims(token);
-        return claims.get("tenantId", String.class);
-    }
-
-    // generate JWT token from username directly (used for refresh)
+    /** Generates a JWT token from username only (used during token refresh). */
     public String generateTokenFromUsername(String username) {
-        Date currentDate = new Date();
-        Date expireDate = new Date(currentDate.getTime() + jwtExpirationDate);
-
+        Date now = new Date();
+        Date expireDate = new Date(now.getTime() + jwtExpirationDate);
         return Jwts.builder()
                 .setSubject(username)
-                .setIssuedAt(new Date())
+                .setIssuedAt(now)
                 .setExpiration(expireDate)
                 .signWith(key())
                 .compact();
     }
 
-    public String generateTokenFromUsername(String username, String tenantId) {
-        Date currentDate = new Date();
-        Date expireDate = new Date(currentDate.getTime() + jwtExpirationDate);
-
-        return Jwts.builder()
-                .setSubject(username)
-                .claim("tenantId", tenantId)
-                .setIssuedAt(currentDate)
-                .setExpiration(expireDate)
-                .signWith(key())
-                .compact();
-    }
-
+    /** Builds the HMAC signing key from the Base64-encoded secret. */
     private Key key() {
-        return Keys.hmacShaKeyFor(
-                Decoders.BASE64.decode(jwtSecret));
+        return Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtSecret));
     }
 
-    // get username from Jwt token
+    /** Extracts the username (subject) from a JWT token. */
     public String getUsername(String token) {
-        Claims claims = getClaims(token);
+        Claims claims = Jwts.parserBuilder().setSigningKey(key()).build().parseClaimsJws(token).getBody();
         return claims.getSubject();
     }
 
-    // get remaining expiration time in milliseconds
-    public long getExpirationRemaining(String token) {
-        try {
-            Claims claims = getClaims(token);
-            Date expiration = claims.getExpiration();
-            long remaining = expiration.getTime() - System.currentTimeMillis();
-            return remaining > 0 ? remaining : 0;
-        } catch (Exception e) {
-            return 0; // If token is invalid or already expired
-        }
+    /** Extracts the tenantId custom claim from a JWT token. */
+    public String getTenantIdFromToken(String token) {
+        Claims claims = Jwts.parserBuilder().setSigningKey(key()).build().parseClaimsJws(token).getBody();
+        return claims.get("tenantId", String.class);
     }
 
-    private Claims getClaims(String token) {
-        return Jwts.parserBuilder()
-                .setSigningKey(key())
-                .build()
-                .parseClaimsJws(token)
-                .getBody();
-    }
-
-    // validate Jwt token
+    /** Validates the JWT token (checks signature, expiration, etc.). */
     public boolean validateToken(String token) {
         try {
-            Jwts.parserBuilder()
-                    .setSigningKey(key())
-                    .build()
-                    .parse(token);
+            Jwts.parserBuilder().setSigningKey(key()).build().parse(token);
             return true;
-        } catch (MalformedJwtException e) {
-            throw new RuntimeException("Invalid JWT token");
-        } catch (ExpiredJwtException e) {
-            throw new RuntimeException("Expired JWT token");
-        } catch (UnsupportedJwtException e) {
-            throw new RuntimeException("Unsupported JWT token");
-        } catch (IllegalArgumentException e) {
-            throw new RuntimeException("JWT claims string is empty.");
+        } catch (MalformedJwtException | ExpiredJwtException | UnsupportedJwtException | IllegalArgumentException e) {
+            return false;
         }
     }
 
+    /**
+     * Returns the remaining time (ms) before this token expires.
+     * Used by TokenBlacklistService to set Redis TTL matching the token's remaining
+     * life.
+     */
+    public long getExpirationRemaining(String token) {
+        Claims claims = Jwts.parserBuilder().setSigningKey(key()).build().parseClaimsJws(token).getBody();
+        return claims.getExpiration().getTime() - System.currentTimeMillis();
+    }
 }

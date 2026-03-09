@@ -18,6 +18,20 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Servlet filter that resolves and validates the tenant for every request.
+ * Runs AFTER JwtAuthenticationFilter (Order 3), so authentication is already
+ * available.
+ *
+ * Tenant resolution priority:
+ * 1. JWT claim "tenantId" (from authenticated user's token)
+ * 2. X-Tenant-ID request header (for API key or unauthenticated flows)
+ * 3. X-API-Key header (looks up tenant by API key in the database)
+ *
+ * Super admins bypass tenant scoping entirely.
+ * Always clears TenantContext in the finally block to prevent thread pool
+ * leaks.
+ */
 @Component
 @Order(3) // Runs after JwtAuthenticationFilter
 @RequiredArgsConstructor
@@ -25,7 +39,7 @@ public class TenantResolutionFilter extends OncePerRequestFilter {
 
     private final TenantRepository tenantRepository;
 
-    // These paths skip tenant resolution entirely
+    // These paths don't need tenant context (public endpoints)
     private static final List<String> EXCLUDED_PATHS = List.of(
             "/api/auth/login",
             "/api/auth/forgot-password",
@@ -45,17 +59,16 @@ public class TenantResolutionFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain chain) throws ServletException, IOException {
         try {
-            Authentication auth = SecurityContextHolder
-                    .getContext().getAuthentication();
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
 
-            // Superadmin bypasses tenant scoping completely
+            // Superadmin bypasses tenant scoping — they can see all tenants' data
             if (auth != null && hasRole(auth, "ROLE_SUPER_ADMIN")) {
                 TenantContext.setTenant(TenantContext.SUPER_ADMIN_TENANT);
                 chain.doFilter(request, response);
                 return;
             }
 
-            // Resolve tenant from request
+            // Resolve tenant ID from JWT, header, or API key
             String tenantId = resolveTenantId(request, auth);
 
             if (tenantId == null || tenantId.isBlank()) {
@@ -63,10 +76,8 @@ public class TenantResolutionFilter extends OncePerRequestFilter {
                 return;
             }
 
-            // Validate tenant exists and is active
-            Tenant tenant = tenantRepository
-                    .findByTenantId(tenantId)
-                    .orElse(null);
+            // Validate tenant exists and is active in the database
+            Tenant tenant = tenantRepository.findByTenantId(tenantId).orElse(null);
 
             if (tenant == null) {
                 sendError(response, "Tenant not found: " + tenantId);
@@ -78,6 +89,7 @@ public class TenantResolutionFilter extends OncePerRequestFilter {
                 return;
             }
 
+            // Set tenant for downstream services to use
             TenantContext.setTenant(tenantId);
             chain.doFilter(request, response);
 
@@ -86,14 +98,18 @@ public class TenantResolutionFilter extends OncePerRequestFilter {
         }
     }
 
+    /**
+     * Resolves tenant ID from multiple sources with priority:
+     * 1. JWT claim (set by JwtAuthenticationFilter in auth details)
+     * 2. X-Tenant-ID header
+     * 3. X-API-Key header (looks up tenant by API key)
+     */
     @SuppressWarnings("unchecked")
-    private String resolveTenantId(HttpServletRequest request,
-            Authentication auth) {
+    private String resolveTenantId(HttpServletRequest request, Authentication auth) {
 
         // Priority 1: From JWT claim (already extracted in JwtAuthenticationFilter)
         if (auth != null && auth.getDetails() instanceof Map) {
-            String tenantId = ((Map<String, String>) auth.getDetails())
-                    .get("tenantId");
+            String tenantId = ((Map<String, String>) auth.getDetails()).get("tenantId");
             if (tenantId != null && !tenantId.isBlank()) {
                 return tenantId;
             }
@@ -108,24 +124,20 @@ public class TenantResolutionFilter extends OncePerRequestFilter {
         // Priority 3: From API key header
         String apiKey = request.getHeader("X-API-Key");
         if (apiKey != null) {
-            return tenantRepository.findByApiKey(apiKey)
-                    .map(Tenant::getTenantId)
-                    .orElse(null);
+            return tenantRepository.findByApiKey(apiKey).map(Tenant::getTenantId).orElse(null);
         }
 
         return null;
     }
 
     private boolean hasRole(Authentication auth, String role) {
-        return auth.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals(role));
+        return auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals(role));
     }
 
-    private void sendError(HttpServletResponse response, String message)
-            throws IOException {
+    /** Sends a 400 Bad Request JSON error response and stops the filter chain. */
+    private void sendError(HttpServletResponse response, String message) throws IOException {
         response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
         response.setContentType("application/json");
-        response.getWriter().write(
-                "{\"error\":\"" + message + "\"}");
+        response.getWriter().write("{\"error\":\"" + message + "\"}");
     }
 }

@@ -13,6 +13,8 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.util.UUID;
+import com.example.kyc_system.repository.*;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -22,7 +24,7 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
     private final UserService userService;
     private final JwtTokenProvider jwtTokenProvider;
     // Add to existing fields
-    private final com.example.kyc_system.repository.UserRepository userRepository;
+    private final UserRepository userRepository;
 
     @Value("${app.jwt-refresh-expiration-milliseconds}")
     private long refreshExpirationMs;
@@ -66,8 +68,7 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
         String redisKey = RT_FAMILY_PREFIX + familyId;
         String redisValue = email + ":" + tokenValue;
 
-        redisTemplate.opsForValue().set(redisKey, redisValue,
-                Duration.ofMillis(refreshExpirationMs));
+        redisTemplate.opsForValue().set(redisKey, redisValue, Duration.ofMillis(refreshExpirationMs));
 
         String userFamiliesKey = USER_FAMILIES_PREFIX + email;
         redisTemplate.opsForSet().add(userFamiliesKey, familyId);
@@ -145,7 +146,7 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
         String email = user.getEmail();
         String userFamiliesKey = USER_FAMILIES_PREFIX + email;
 
-        java.util.Set<String> families = redisTemplate.opsForSet().members(userFamiliesKey);
+        Set<String> families = redisTemplate.opsForSet().members(userFamiliesKey);
         if (families != null && !families.isEmpty()) {
             for (String familyId : families) {
                 redisTemplate.delete(RT_FAMILY_PREFIX + familyId);

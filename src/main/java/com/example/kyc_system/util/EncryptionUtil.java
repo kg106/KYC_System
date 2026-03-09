@@ -13,9 +13,8 @@ import java.util.Base64;
 public class EncryptionUtil {
 
     private static final String ALGORITHM = "AES/CBC/PKCS5Padding";
-    private static final byte[] FIXED_IV = "1234567812345678".getBytes(StandardCharsets.UTF_8); // Fixed IV for
-                                                                                                // deterministic
-                                                                                                // encryption
+    // Fixed IV for deterministic encryption
+    private static final byte[] FIXED_IV = "1234567812345678".getBytes(StandardCharsets.UTF_8);
 
     @Value("${app.encryption-secret}")
     private String secretKey;

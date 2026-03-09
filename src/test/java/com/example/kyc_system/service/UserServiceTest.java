@@ -212,7 +212,7 @@ class UserServiceTest {
                 Authentication auth = mock(Authentication.class);
 
                 when(authenticationManager.authenticate(any())).thenReturn(auth);
-                when(jwtTokenProvider.generateToken(auth)).thenReturn("mock-token");
+                // hen(jwtTokenProvider.generateToken(auth)).thenReturn("mock-token");
 
                 String result = userService.login(loginDTO);
 

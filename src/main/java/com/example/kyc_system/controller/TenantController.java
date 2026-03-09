@@ -15,6 +15,12 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
+/**
+ * Super Admin-only controller for managing tenants.
+ * All endpoints require ROLE_SUPER_ADMIN.
+ * Supports CRUD operations, activation/deactivation, API key rotation, and
+ * stats retrieval.
+ */
 @RestController
 @RequestMapping("/api/tenants")
 @PreAuthorize("hasRole('SUPER_ADMIN')")
@@ -24,6 +30,10 @@ public class TenantController {
 
     private final TenantService tenantService;
 
+    /**
+     * Creates a new tenant and optionally provisions a tenant admin user if
+     * credentials are provided.
+     */
     @PostMapping
     @Operation(summary = "Create new tenant", description = "Creates a new tenant and optionally provisions a tenant admin user")
     public ResponseEntity<TenantDTO> createTenant(
@@ -46,6 +56,10 @@ public class TenantController {
         return ResponseEntity.ok(tenantService.getTenant(tenantId));
     }
 
+    /**
+     * Partially updates tenant configuration (name, email, limits, allowed doc
+     * types).
+     */
     @PatchMapping("/{tenantId}")
     @Operation(summary = "Update tenant configuration")
     public ResponseEntity<TenantDTO> updateTenant(
@@ -54,6 +68,10 @@ public class TenantController {
         return ResponseEntity.ok(tenantService.updateTenant(tenantId, dto));
     }
 
+    /**
+     * Deactivates a tenant — blocks all users under this tenant from logging in.
+     * Returns whether the state actually changed (vs already inactive).
+     */
     @PatchMapping("/{tenantId}/deactivate")
     @Operation(summary = "Deactivate tenant", description = "Blocks all users of this tenant immediately")
     public ResponseEntity<String> deactivate(
@@ -72,6 +90,7 @@ public class TenantController {
         return ResponseEntity.ok(message);
     }
 
+    /** Generates a new API key for the tenant, invalidating the previous one. */
     @PostMapping("/{tenantId}/rotate-api-key")
     @Operation(summary = "Rotate API key", description = "Generates a new API key, invalidating the old one")
     public ResponseEntity<Map<String, String>> rotateApiKey(
@@ -80,6 +99,7 @@ public class TenantController {
         return ResponseEntity.ok(Map.of("apiKey", newKey));
     }
 
+    /** Returns aggregate KYC statistics for a specific tenant. */
     @GetMapping("/{tenantId}/stats")
     @Operation(summary = "Get tenant stats", description = "Returns KYC stats for a specific tenant")
     public ResponseEntity<TenantStatsDTO> getStats(

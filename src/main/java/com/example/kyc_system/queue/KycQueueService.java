@@ -5,15 +5,30 @@ import org.springframework.stereotype.Service;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
+/**
+ * In-memory queue for KYC request processing.
+ * Decouples the document upload (synchronous) from the heavy OCR processing
+ * (asynchronous).
+ * KycWorker threads poll from this queue to process requests.
+ */
 @Service
 public class KycQueueService {
 
+    /**
+     * Unbounded, thread-safe blocking queue — stores KYC request IDs waiting to be
+     * processed.
+     */
     private final BlockingQueue<Long> queue = new LinkedBlockingQueue<>();
 
+    /** Adds a KYC request ID to the queue (non-blocking). */
     public void push(Long requestId) {
         queue.offer(requestId);
     }
 
+    /**
+     * Blocks until a request ID is available, then returns it. Used by worker
+     * threads.
+     */
     public Long poll() throws InterruptedException {
         return queue.take();
     }

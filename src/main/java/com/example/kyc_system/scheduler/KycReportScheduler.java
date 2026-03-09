@@ -1,5 +1,6 @@
 package com.example.kyc_system.scheduler;
 
+import java.time.LocalDate;
 import java.time.YearMonth;
 
 import org.springframework.scheduling.annotation.Scheduled;
@@ -25,14 +26,16 @@ public class KycReportScheduler {
     @Scheduled(cron = "0 0 8 1 * *", zone = "Asia/Kolkata")
     public void sendMonthlyReport() {
         YearMonth lastMonth = YearMonth.now().minusMonths(1);
+        LocalDate dateFrom = lastMonth.atDay(1);
+        LocalDate dateTo = lastMonth.atEndOfMonth();
         log.info("Generating KYC monthly report for {}", lastMonth);
-        KycMonthlyReportDTO report = reportService.generateMonthlyReport(lastMonth);
+        KycMonthlyReportDTO report = reportService.generateMonthlyReport(dateFrom, dateTo);
         emailService.sendMonthlyReport(report);
     }
 
     // Optional: Admin can trigger manually via endpoint
-    public void triggerManually(YearMonth month) {
-        KycMonthlyReportDTO report = reportService.generateMonthlyReport(month);
+    public void triggerManually(LocalDate dateFrom, LocalDate dateTo) {
+        KycMonthlyReportDTO report = reportService.generateMonthlyReport(dateFrom, dateTo);
         emailService.sendMonthlyReport(report);
     }
 }

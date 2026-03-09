@@ -43,6 +43,10 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public User getActiveUser(Long userId) {
+        if (TenantContext.isSuperAdmin()) {
+            return userRepository.findById(userId)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+        }
         String tenantId = TenantContext.getTenant();
         return userRepository.findByIdAndTenantId(userId, tenantId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -50,35 +54,43 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public List<UserDTO> getAllUsers() {
+        if (TenantContext.isSuperAdmin()) {
+            return userRepository.findAll().stream().map(this::mapToDTO).collect(Collectors.toList());
+        }
         String tenantId = TenantContext.getTenant();
-        return userRepository.findByTenantId(tenantId).stream()
-                .map(this::mapToDTO)
-                .collect(Collectors.toList());
+        return userRepository.findByTenantId(tenantId).stream().map(this::mapToDTO).collect(Collectors.toList());
     }
 
     @Override
     public UserDTO getUserById(Long id) {
+        if (TenantContext.isSuperAdmin()) {
+            User user = userRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
+            return mapToDTO(user);
+        }
         String tenantId = TenantContext.getTenant();
         User user = userRepository.findByIdAndTenantId(id, tenantId)
-                .orElseThrow(() -> new RuntimeException(
-                        "User not found with id: " + id));
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
         return mapToDTO(user);
     }
 
     @Override
     public UserDTO getUserByEmail(String email) {
+        if (TenantContext.isSuperAdmin()) {
+            User user = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
+            return mapToDTO(user);
+        }
         String tenantId = TenantContext.getTenant();
         User user = userRepository.findByEmailAndTenantId(email, tenantId)
-                .orElseThrow(() -> new RuntimeException(
-                        "User not found with email: " + email));
+                .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
         return mapToDTO(user);
     }
 
     @Override
     public UserDTO getUserByEmailDirect(String email) {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException(
-                        "User not found with email: " + email));
+                .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
         return mapToDTO(user);
     }
 
@@ -87,8 +99,7 @@ public class UserServiceImpl implements UserService {
     public UserDTO createUser(UserDTO userDTO) {
         String tenantId = TenantContext.getTenant();
 
-        if (userRepository.existsByEmailAndTenantId(
-                userDTO.getEmail(), tenantId)) {
+        if (userRepository.existsByEmailAndTenantId(userDTO.getEmail(), tenantId)) {
             throw new RuntimeException("Email already exists");
         }
 
@@ -97,9 +108,7 @@ public class UserServiceImpl implements UserService {
                 .email(userDTO.getEmail())
                 .mobileNumber(userDTO.getMobileNumber())
                 .passwordHash(PasswordUtil.hashPassword(userDTO.getPassword()))
-                .isActive(userDTO.getIsActive() != null
-                        ? userDTO.getIsActive()
-                        : true)
+                .isActive(userDTO.getIsActive() != null ? userDTO.getIsActive() : true)
                 .dob(userDTO.getDob())
                 .tenantId(tenantId) // ← scope to tenant
                 .build();
@@ -107,10 +116,7 @@ public class UserServiceImpl implements UserService {
         User savedUser = userRepository.save(user);
 
         roleRepository.findByName("ROLE_USER").ifPresent(role -> {
-            userRoleRepository.save(UserRole.builder()
-                    .user(savedUser)
-                    .role(role)
-                    .build());
+            userRoleRepository.save(UserRole.builder().user(savedUser).role(role).build());
         });
 
         return mapToDTO(savedUser);
@@ -121,8 +127,7 @@ public class UserServiceImpl implements UserService {
     public UserDTO updateUser(Long id, UserUpdateDTO userDTO) {
         String tenantId = TenantContext.getTenant();
         User user = userRepository.findByIdAndTenantId(id, tenantId)
-                .orElseThrow(() -> new RuntimeException(
-                        "User not found with id: " + id));
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
 
         if (userDTO.getName() != null)
             user.setName(userDTO.getName());
@@ -143,12 +148,10 @@ public class UserServiceImpl implements UserService {
     public void deleteUser(Long id) {
         String tenantId = TenantContext.getTenant();
         User user = userRepository.findByIdAndTenantId(id, tenantId)
-                .orElseThrow(() -> new RuntimeException(
-                        "User not found with id: " + id));
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
 
         kycRequestRepository.findByUserIdAndTenantId(id, tenantId)
-                .forEach(request -> request.getKycDocuments()
-                        .forEach(kycDocumentService::deleteDocument));
+                .forEach(request -> request.getKycDocuments().forEach(kycDocumentService::deleteDocument));
 
         userRepository.deleteById(id);
     }
@@ -156,8 +159,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public String login(LoginDTO loginDTO) {
         Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        loginDTO.getEmail(), loginDTO.getPassword()));
+                new UsernamePasswordAuthenticationToken(loginDTO.getEmail(), loginDTO.getPassword()));
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
@@ -172,9 +174,9 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional(readOnly = true)
     public Page<UserDTO> searchUsers(UserSearchDTO searchDTO, Pageable pageable) {
-        // Specification needs tenant scope — handled in next step
-        return userRepository.findAll(
-                UserSpecification.buildSpecification(searchDTO), pageable)
+        String tenantId = TenantContext.getTenant();
+        boolean isSuperAdmin = TenantContext.isSuperAdmin();
+        return userRepository.findAll(UserSpecification.buildSpecification(searchDTO, tenantId, isSuperAdmin), pageable)
                 .map(this::mapToDTO);
     }
 
@@ -186,6 +188,7 @@ public class UserServiceImpl implements UserService {
                 .mobileNumber(user.getMobileNumber())
                 .isActive(user.getIsActive())
                 .dob(user.getDob())
+                .tenantId(user.getTenantId())
                 // Password is not returned
                 .build();
     }

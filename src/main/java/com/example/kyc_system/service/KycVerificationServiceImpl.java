@@ -17,9 +17,7 @@ public class KycVerificationServiceImpl implements KycVerificationService {
         private final KycRequestRepository requestRepository;
 
         @Override
-        public KycVerificationResult verifyAndSave(
-                        Long requestId,
-                        KycExtractedData extractedData) {
+        public KycVerificationResult verifyAndSave(Long requestId, KycExtractedData extractedData) {
 
                 KycRequest request = requestRepository.findById(requestId)
                                 .orElseThrow(() -> new RuntimeException("Request not found"));
@@ -38,8 +36,8 @@ public class KycVerificationServiceImpl implements KycVerificationService {
                 String storedDocNormalized = normalize(storedDoc);
                 String extractedDocNormalized = normalize(extractedData.getExtractedDocumentNumber());
 
-                boolean docMatch = storedDocNormalized != null &&
-                                storedDocNormalized.equalsIgnoreCase(extractedDocNormalized);
+                boolean docMatch = storedDocNormalized != null
+                                && storedDocNormalized.equalsIgnoreCase(extractedDocNormalized);
 
                 StringBuilder reason = new StringBuilder();
                 if (!nameMatch)

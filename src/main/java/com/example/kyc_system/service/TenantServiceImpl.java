@@ -40,9 +40,7 @@ public class TenantServiceImpl implements TenantService {
                 .email(dto.getEmail())
                 .plan("BASIC")
                 .isActive(true)
-                .maxDailyAttempts(dto.getMaxDailyAttempts() != null
-                        ? dto.getMaxDailyAttempts()
-                        : 5)
+                .maxDailyAttempts(dto.getMaxDailyAttempts() != null ? dto.getMaxDailyAttempts() : 5)
                 .allowedDocumentTypes(
                         dto.getAllowedDocumentTypes() != null
                                 ? String.join(",", dto.getAllowedDocumentTypes())
@@ -55,9 +53,7 @@ public class TenantServiceImpl implements TenantService {
 
         // Auto-provision tenant admin if credentials provided
         if (dto.getAdminEmail() != null && dto.getAdminPassword() != null) {
-            provisionTenantAdmin(saved,
-                    dto.getAdminEmail(),
-                    dto.getAdminPassword());
+            provisionTenantAdmin(saved, dto.getAdminEmail(), dto.getAdminPassword());
         }
 
         return mapToDTO(saved);
@@ -86,8 +82,7 @@ public class TenantServiceImpl implements TenantService {
         if (dto.getMaxDailyAttempts() != null)
             tenant.setMaxDailyAttempts(dto.getMaxDailyAttempts());
         if (dto.getAllowedDocumentTypes() != null)
-            tenant.setAllowedDocumentTypes(
-                    String.join(",", dto.getAllowedDocumentTypes()));
+            tenant.setAllowedDocumentTypes(String.join(",", dto.getAllowedDocumentTypes()));
 
         return mapToDTO(tenantRepository.save(tenant));
     }
@@ -121,10 +116,8 @@ public class TenantServiceImpl implements TenantService {
 
         long totalUsers = userRepository.countByTenantId(tenantId);
         long totalRequests = kycRequestRepository.countByTenantId(tenantId);
-        long verified = kycRequestRepository
-                .countByTenantIdAndStatus(tenantId, "VERIFIED");
-        long failed = kycRequestRepository
-                .countByTenantIdAndStatus(tenantId, "FAILED");
+        long verified = kycRequestRepository.countByTenantIdAndStatus(tenantId, "VERIFIED");
+        long failed = kycRequestRepository.countByTenantIdAndStatus(tenantId, "FAILED");
         long pending = totalRequests - verified - failed;
 
         return TenantStatsDTO.builder()
@@ -135,16 +128,13 @@ public class TenantServiceImpl implements TenantService {
                 .verified(verified)
                 .failed(failed)
                 .pending(Math.max(pending, 0))
-                .passRate(totalRequests > 0
-                        ? (double) verified / totalRequests * 100
-                        : 0)
+                .passRate(totalRequests > 0 ? (double) verified / totalRequests * 100 : 0)
                 .build();
     }
 
     // ─── Private Helpers ──────────────────────────────────────────
 
-    private void provisionTenantAdmin(Tenant tenant,
-            String adminEmail, String adminPassword) {
+    private void provisionTenantAdmin(Tenant tenant, String adminEmail, String adminPassword) {
         // Generate a unique dummy mobile number for tenant admin to avoid conflict
         String mobile = String.format("%010d", Math.abs((tenant.getTenantId() + "admin").hashCode()) % 10000000000L);
 
@@ -164,8 +154,7 @@ public class TenantServiceImpl implements TenantService {
                 .role(role)
                 .build()));
 
-        log.info("Tenant admin provisioned for tenant: {}",
-                tenant.getTenantId());
+        log.info("Tenant admin provisioned for tenant: {}", tenant.getTenantId());
     }
 
     private String generateApiKey() {
@@ -174,8 +163,7 @@ public class TenantServiceImpl implements TenantService {
 
     private Tenant getOrThrow(String tenantId) {
         return tenantRepository.findByTenantId(tenantId)
-                .orElseThrow(() -> new RuntimeException(
-                        "Tenant not found: " + tenantId));
+                .orElseThrow(() -> new RuntimeException("Tenant not found: " + tenantId));
     }
 
     private TenantDTO mapToDTO(Tenant tenant) {

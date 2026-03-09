@@ -41,6 +41,8 @@ public class UserDTO {
     @Pattern(regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[@#$%^&+=!_]).{8,}$", message = "Password must contain at least one uppercase letter, one lowercase letter, one digit, and one special character")
     private String password;
 
+    private String tenantId;
+
     @Schema(example = "true")
     private Boolean isActive;
 

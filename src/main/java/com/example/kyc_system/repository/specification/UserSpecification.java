@@ -10,9 +10,15 @@ import java.util.List;
 
 public class UserSpecification {
 
-    public static Specification<User> buildSpecification(UserSearchDTO searchDTO) {
+    public static Specification<User> buildSpecification(UserSearchDTO searchDTO, String tenantId,
+            boolean isSuperAdmin) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
+
+            // Multi-tenancy scoping
+            if (!isSuperAdmin && tenantId != null && !tenantId.isBlank()) {
+                predicates.add(cb.equal(root.get("tenantId"), tenantId));
+            }
 
             if (searchDTO.getName() != null && !searchDTO.getName().isEmpty()) {
                 predicates.add(cb.like(cb.lower(root.get("name")), "%" + searchDTO.getName().toLowerCase() + "%"));

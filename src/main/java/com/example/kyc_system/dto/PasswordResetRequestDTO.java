@@ -1,18 +1,20 @@
 package com.example.kyc_system.dto;
 
-import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
-@Data
+/**
+ * DTO for Step 1 of password reset — user provides their email
+ * to receive a 6-character reset token.
+ */
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class PasswordResetRequestDTO {
-    @Schema(example = "user@example.com", description = "Registered email address to receive reset token")
     @NotBlank(message = "Email is required")
-    @Email(message = "Email should be valid")
+    @Email(message = "Invalid email format")
     private String email;
 }

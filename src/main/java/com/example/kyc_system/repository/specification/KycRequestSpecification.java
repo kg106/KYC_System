@@ -12,9 +12,15 @@ import java.util.List;
 
 public class KycRequestSpecification {
 
-    public static Specification<KycRequest> buildSpecification(KycRequestSearchDTO searchDTO) {
+    public static Specification<KycRequest> buildSpecification(KycRequestSearchDTO searchDTO, String tenantId,
+            boolean isSuperAdmin) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
+
+            // Multi-tenancy scoping
+            if (!isSuperAdmin && tenantId != null && !tenantId.isBlank()) {
+                predicates.add(cb.equal(root.get("tenantId"), tenantId));
+            }
 
             if (searchDTO.getUserId() != null) {
                 predicates.add(cb.equal(root.get("user").get("id"), searchDTO.getUserId()));

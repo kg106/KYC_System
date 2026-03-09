@@ -6,6 +6,10 @@ import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
 
+/**
+ * Repository for role definitions (ROLE_USER, ROLE_ADMIN, ROLE_TENANT_ADMIN,
+ * ROLE_SUPER_ADMIN).
+ */
 @Repository
 public interface RoleRepository extends JpaRepository<Role, Long> {
     Optional<Role> findByName(String name);

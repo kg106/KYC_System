@@ -11,6 +11,10 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+/**
+ * Persists OCR-extracted data (name, DOB, document number) to the database.
+ * Called by KycOrchestrationService after OCR processing completes.
+ */
 @Service
 @RequiredArgsConstructor
 public class KycExtractionServiceImpl implements KycExtractionService {
@@ -35,6 +39,10 @@ public class KycExtractionServiceImpl implements KycExtractionService {
         return repository.save(data);
     }
 
+    /**
+     * Safely parses a date string — returns null instead of throwing on invalid
+     * format.
+     */
     private LocalDate safeParseDate(String dateStr) {
         if (dateStr == null || dateStr.trim().isEmpty()) {
             return null;
@@ -42,7 +50,6 @@ public class KycExtractionServiceImpl implements KycExtractionService {
         try {
             return LocalDate.parse(dateStr);
         } catch (Exception e) {
-            // Log warning but don't crash the flow
             System.err.println("Failed to parse extracted DOB: " + dateStr + ". Error: " + e.getMessage());
             return null;
         }

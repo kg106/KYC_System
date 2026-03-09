@@ -1,20 +1,17 @@
 package com.example.kyc_system.dto;
 
-import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
+/**
+ * DTO returned after successful login.
+ * Contains the JWT access token and the refresh token.
+ */
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class JwtAuthResponse {
-    @Schema(example = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbkBreWMuY29tIiwiaWF0IjoxNzM5NjkwNTI3LCJleHAiOjE3Mzk3NzY5Mjd9...", description = "JWT Access Token")
-    private String accessToken;
-    @Schema(example = "Bearer")
+    private String accessToken; // Short-lived JWT (default: 15 min)
     private String tokenType = "Bearer";
-    @Schema(example = "UUID-UUID...", description = "Refresh Token (also returned as HttpOnly Cookie)")
-    private String refreshToken;
+    private String refreshToken; // Long-lived refresh token (default: 7 days)
 }

@@ -5,6 +5,7 @@ import lombok.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.*;
 
 @Entity
 @Table(name = "users")
@@ -45,11 +46,11 @@ public class User extends BaseEntity {
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     @Builder.Default
-    private java.util.Set<UserRole> userRoles = new java.util.HashSet<>();
+    private Set<UserRole> userRoles = new HashSet<>();
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
-    private java.util.Set<KycRequest> kycRequests = new java.util.HashSet<>();
+    private Set<KycRequest> kycRequests = new HashSet<>();
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "tenant_id", referencedColumnName = "tenant_id", insertable = false, updatable = false)

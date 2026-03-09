@@ -1,14 +1,16 @@
 package com.example.kyc_system.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
-@Data
-@Builder
+/**
+ * DTO for searching/filtering users.
+ * All fields are optional — only non-null fields are used as filter criteria.
+ */
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class UserSearchDTO {
     private String name;
     private String email;

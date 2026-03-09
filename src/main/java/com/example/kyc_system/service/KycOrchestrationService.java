@@ -29,10 +29,7 @@ public class KycOrchestrationService {
         private final KycVerificationService verificationService;
 
         @Transactional
-        public Long submitKyc(Long userId,
-                        DocumentType documentType,
-                        MultipartFile file,
-                        String documentNumber) {
+        public Long submitKyc(Long userId, DocumentType documentType, MultipartFile file, String documentNumber) {
 
                 if (documentService.isVerified(userId, documentType, documentNumber)) {
                         throw new RuntimeException("Your " + documentType
