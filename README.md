@@ -82,7 +82,6 @@ The application starts on `http://localhost:8080`.
 ## 🧪 Testing
 
 *   **Unit Tests**: `./mvnw test`
-*   **Concurrency**: `python3 concurrent_kyc_test.py` (Requires `requests` library)
 
 ## 🔒 Security
 
