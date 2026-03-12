@@ -1,19 +1,33 @@
 # KYC System
 
-A robust **Know Your Customer (KYC)** management system built with **Spring Boot** and **PostgreSQL**. This application handles user registration, secure document uploads, OCR-based data extraction, and automated validation workflows.
+A robust, enterprise-ready **Know Your Customer (KYC)** management system built with **Spring Boot** and **PostgreSQL**. This application features a multi-tenant architecture, secure document handling, OCR-based data extraction, and deep audit capabilities.
 
 ## 🚀 Features
 
-*   **Secure Authentication**: JWT-based stateless authentication (Login/Register).
-*   **Role-Based Access Control (RBAC)**: Separate flows for Users and Admins.
+*   **Multi-tenant Architecture**: Isolated data and configuration per tenant.
+*   **Secure Authentication**: JWT-based stateless authentication with token blacklisting.
+*   **Role-Based Access Control (RBAC)**: Comprehensive role hierarchy (`SUPER_ADMIN`, `TENANT_ADMIN`, `ADMIN`, `USER`).
 *   **KYC Document Management**:
     *   Upload Identity Proofs (Passport, PAN, Aadhaar, etc.).
-    *   Automatic Document Type Verification.
     *   OCR Data Extraction using **Tesseract**.
-*   **Concurrency Handling**: Robust handling of simultaneous requests to prevent race conditions.
-*   **Audit & Logging**: Detailed logs for all critical actions.
-*   **Email Notifications**: SMTP integration for account alerts (Gmail).
-*   **Rate Limiting**: Protection against abuse.
+    *   Automated validation and masking of sensitive info for admins.
+*   **Advanced Reporting**: Automated and manual KYC stats reporting with email integration.
+*   **Dynamic Search & Filtering**: Rich search capabilities for KYC requests with pagination.
+*   **Concurrency Handling**: Robust handling of simultaneous requests using optimistic locking.
+*   **Audit & Logging**: Detailed logs for all critical system actions.
+
+## 🏗️ Multi-Tenancy & Security
+
+The system supports multiple resolution strategies for tenant isolation:
+1.  **JWT Claim**: `tenantId` is embedded in the JWT for authenticated users.
+2.  **X-Tenant-ID Header**: Used for tenant-scoped operations.
+3.  **X-API-Key Header**: Allows external integrations to access tenant data securely.
+
+**Role Hierarchy:**
+- `ROLE_SUPER_ADMIN`: Global access across all tenants. Manages tenant lifecycles.
+- `ROLE_TENANT_ADMIN`: Full access to users and data within their specific tenant.
+- `ROLE_ADMIN`: Operational access within a tenant (view/search KYC).
+- `ROLE_USER`: Access only to their own profile and KYC documents.
 
 ## 🛠️ Tech Stack
 
@@ -22,93 +36,56 @@ A robust **Know Your Customer (KYC)** management system built with **Spring Boot
 *   **Database**: PostgreSQL
 *   **OCR Engine**: Tesseract OCR
 *   **Build Tool**: Maven
-*   **Testing**: JUnit 5, Mockito, Python (for concurrency tests)
+*   **Security**: Spring Security 6 (JWT, RBAC, AES-256 Encryption)
 
 ## 📋 Prerequisites
 
-Ensure you have the following installed before running the application:
-
 1.  **Java 21 SDK**
 2.  **PostgreSQL** (Running on port `5433` by default)
-3.  **Tesseract OCR**
-    *   **Linux**: `sudo apt-get install tesseract-ocr`
-    *   **Mac**: `brew install tesseract`
-    *   **Windows**: Download installer from UB-Mannheim/tesseract/wiki
+3.  **Tesseract OCR** (`sudo apt-get install tesseract-ocr`)
 
 ## ⚙️ Configuration
 
-The application is configured via `src/main/resources/application.properties`.
+Configured via `src/main/resources/application.properties`.
 
-### Database Configuration
+### Database
 ```properties
 spring.datasource.url=jdbc:postgresql://localhost:5433/kyc_db_copy
 spring.datasource.username=test_user
 spring.datasource.password=system
 ```
 
-### Tesseract Path (Linux Default)
+### OCR (Linux Default)
 ```properties
 tesseract.datapath=/usr/share/tesseract-ocr/5/tessdata
 ```
 
-### Mail Configuration
-Configured to use Gmail SMTP on port `587`.
-
 ## 🏃‍♂️ Installation & Running
 
-1.  **Clone the repository**:
-    ```bash
-    git clone <repository-url>
-    cd kyc_system
-    ```
+1.  **Build**: `./mvnw clean install`
+2.  **Run**: `./mvnw spring-boot:run`
 
-2.  **Build the project**:
-    ```bash
-    ./mvnw clean install
-    ```
-
-3.  **Run the application**:
-    ```bash
-    ./mvnw spring-boot:run
-    ```
-
-The application will start on `http://localhost:8080`.
+The application starts on `http://localhost:8080`.
 
 ## 📖 API Documentation
-
-The project includes Swagger UI for interactive API documentation.
 
 *   **Swagger UI**: [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
 *   **OpenAPI JSON**: [http://localhost:8080/v3/api-docs](http://localhost:8080/v3/api-docs)
 
-### Key Endpoints
-*   `POST /api/auth/register` - Register a new user
-*   `POST /api/auth/login` - Login and get JWT
-*   `POST /api/kyc/upload` - Upload KYC document
-*   `GET /api/kyc/status` - Check KYC status
+### Key Endpoint Groups
+*   `POST /api/auth/` - Authentication (Register, Login, Logout)
+*   `POST /api/tenants/` - Tenant Management (Super Admin only)
+*   `POST /api/kyc/upload` - KYC Submission
+*   `GET  /api/kyc/search` - Advanced KYC Search (Admin)
+*   `POST /api/kyc/report` - Manual Report Trigger
 
 ## 🧪 Testing
 
-### Unit Reviews
-Run standard Spring Boot unit tests:
-```bash
-./mvnw test
-```
-
-### Concurrency Testing
-A Python script is provided to test system behavior under load (Race Conditions, Optimistic Locking).
-
-1.  Install Python dependencies:
-    ```bash
-    pip install requests
-    ```
-2.  Run the test script:
-    ```bash
-    python3 concurrent_kyc_test.py
-    ```
+*   **Unit Tests**: `./mvnw test`
+*   **Concurrency**: `python3 concurrent_kyc_test.py` (Requires `requests` library)
 
 ## 🔒 Security
 
-*   **BCrypt** for password hashing.
-*   **AES-256** (configured via `app.encryption-secret`) for sensitive data encryption.
-*   **JWT** tokens with configurable expiration (`app.jwt-expiration-milliseconds`).
+*   **BCrypt**: Password hashing.
+*   **AES-256**: Sensitive data encryption.
+*   **JWT**: Stateless auth with tenant-scoped claims.
