@@ -4,11 +4,15 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 // dto/KycMonthlyReportDTO.java
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
 @Builder
 public class KycMonthlyReportDTO {
     private LocalDate dateFrom;

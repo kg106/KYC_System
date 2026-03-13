@@ -12,7 +12,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
-import java.util.UUID;
+
 import com.example.kyc_system.repository.*;
 import java.util.*;
 
@@ -142,7 +142,12 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
 
     @Override
     public void revokeAllForUser(Long userId) {
-        UserDTO user = userService.getUserById(userId);
+        // UserDTO user = userService.getUserById(userId);
+        // Use userRepository.findById() directly — bypasses tenant-scoped
+        // UserService.getUserById()
+        // This is called from password reset which has no TenantContext set
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
         String email = user.getEmail();
         String userFamiliesKey = USER_FAMILIES_PREFIX + email;
 

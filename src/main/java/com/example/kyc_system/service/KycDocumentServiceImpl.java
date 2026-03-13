@@ -1,11 +1,12 @@
 package com.example.kyc_system.service;
 
+import com.example.kyc_system.config.KycProperties;
 import com.example.kyc_system.entity.KycDocument;
 import com.example.kyc_system.entity.KycRequest;
 import com.example.kyc_system.enums.DocumentType;
 import com.example.kyc_system.repository.KycDocumentRepository;
 import com.example.kyc_system.repository.KycRequestRepository;
-import com.example.kyc_system.util.KycFileValidator;
+// import com.example.kyc_system.util.KycFileValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -25,12 +26,11 @@ public class KycDocumentServiceImpl implements KycDocumentService {
 
     private final KycDocumentRepository repository;
     private final KycRequestRepository requestRepository;
-    private final KycFileValidator fileValidator;
+    // private final KycFileValidator fileValidator;
+    private final KycProperties kycProperties;
 
     @Override
     public KycDocument save(Long requestId, DocumentType documentType, MultipartFile file, String documentNumber) {
-
-        fileValidator.validate(file);
 
         KycRequest request = requestRepository.findById(requestId)
                 .orElseThrow(() -> new RuntimeException("Request not found"));
@@ -40,6 +40,7 @@ public class KycDocumentServiceImpl implements KycDocumentService {
 
         KycDocument doc = KycDocument.builder()
                 .kycRequest(request)
+                .tenantId(request.getTenantId())
                 .documentType(documentType.name())
                 .documentNumber(documentNumber)
                 .documentPath(path)
@@ -77,7 +78,8 @@ public class KycDocumentServiceImpl implements KycDocumentService {
     private String store(MultipartFile file) {
         try {
             String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
-            Path path = Paths.get("uploads", fileName);
+            // Path path = Paths.get("uploads", fileName);
+            Path path = Paths.get(kycProperties.getStorage().getBasePath(), fileName);
             Files.createDirectories(path.getParent());
             Files.write(path, file.getBytes());
             return path.toString();

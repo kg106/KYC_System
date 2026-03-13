@@ -6,6 +6,8 @@ import com.example.kyc_system.enums.DocumentType;
 import com.example.kyc_system.enums.KycStatus;
 import com.example.kyc_system.queue.KycQueueService;
 import com.example.kyc_system.repository.KycRequestRepository;
+import com.example.kyc_system.util.KycFileValidator;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,10 +29,11 @@ public class KycOrchestrationService {
         private final OcrService ocrService;
         private final KycExtractionService extractionService;
         private final KycVerificationService verificationService;
+        private final KycFileValidator fileValidator;
 
         @Transactional
         public Long submitKyc(Long userId, DocumentType documentType, MultipartFile file, String documentNumber) {
-
+                fileValidator.validate(file);
                 if (documentService.isVerified(userId, documentType, documentNumber)) {
                         throw new RuntimeException("Your " + documentType
                                         + " is already verified. No further action is required.");

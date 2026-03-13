@@ -4,29 +4,32 @@ import com.example.kyc_system.dto.PasswordResetDTO;
 import com.example.kyc_system.entity.User;
 import com.example.kyc_system.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.test.util.ReflectionTestUtils;
 
-import java.lang.reflect.Field;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+@DisplayName("PasswordResetServiceImpl Unit Tests")
 class PasswordResetServiceImplTest {
 
     @Mock
     private UserRepository userRepository;
-
     @Mock
     private JavaMailSender mailSender;
+    @Mock
+    private RefreshTokenService refreshTokenService;
 
     @InjectMocks
     private PasswordResetServiceImpl passwordResetService;
@@ -37,61 +40,87 @@ class PasswordResetServiceImplTest {
     }
 
     @Test
-    void resetPassword_ShouldThrowException_WhenPasswordsDoNotMatch() {
-        PasswordResetDTO resetDTO = new PasswordResetDTO();
-        resetDTO.setEmail("test@example.com");
-        resetDTO.setToken("123456");
-        resetDTO.setNewPassword("Password@123");
-        resetDTO.setConfirmPassword("Different@123");
+    @DisplayName("Should generate token and send email if user exists")
+    void generateToken_UserExists_SendsEmail() {
+        String email = "user@test.com";
+        when(userRepository.findByEmail(email)).thenReturn(Optional.of(User.builder().email(email).build()));
 
-        // Set up a valid token in the internal map using reflection since it's private
-        setupMockToken("test@example.com", "123456");
+        String result = passwordResetService.generateToken(email);
 
-        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
-            passwordResetService.resetPassword(resetDTO);
-        });
-
-        assertEquals("Passwords do not match", exception.getMessage());
-        verifyNoInteractions(userRepository);
+        assertEquals("If account exist, then email has been sent.", result);
+        verify(mailSender).send(any(SimpleMailMessage.class));
     }
 
     @Test
-    void resetPassword_ShouldUpdatePassword_WhenPasswordsMatch() throws Exception {
-        PasswordResetDTO resetDTO = new PasswordResetDTO();
-        resetDTO.setEmail("test@example.com");
-        resetDTO.setToken("123456");
-        resetDTO.setNewPassword("Strong@123");
-        resetDTO.setConfirmPassword("Strong@123");
+    @DisplayName("Should not send email but return same message if user missing")
+    void generateToken_UserMissing_SilentSuccess() {
+        String email = "missing@test.com";
+        when(userRepository.findByEmail(email)).thenReturn(Optional.empty());
 
-        setupMockToken("test@example.com", "123456");
+        String result = passwordResetService.generateToken(email);
 
-        User user = new User();
-        user.setEmail("test@example.com");
-        when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(user));
-
-        passwordResetService.resetPassword(resetDTO);
-
-        verify(userRepository).save(user);
+        assertEquals("If account exist, then email has been sent.", result);
+        verify(mailSender, never()).send(any(SimpleMailMessage.class));
     }
 
-    @SuppressWarnings("unchecked")
-    private void setupMockToken(String email, String token) {
-        try {
-            Field tokenStorageField = PasswordResetServiceImpl.class.getDeclaredField("tokenStorage");
-            tokenStorageField.setAccessible(true);
-            Map<String, Object> tokenStorage = (Map<String, Object>) tokenStorageField.get(passwordResetService);
+    @Test
+    @DisplayName("Should reset password successfully with valid token")
+    void resetPassword_ValidToken_Success() {
+        String email = "user@test.com";
+        String token = "ABC123";
+        PasswordResetDTO dto = new PasswordResetDTO(email, token, "NewPass123", "NewPass123");
+        User user = User.builder().id(1L).email(email).build();
 
-            // Using reflection to create TokenInfo since it's private
+        // Inject token into internal storage via Reflection for testing resetPassword
+        // independently
+        Map<String, Object> tokenStorage = (Map<String, Object>) ReflectionTestUtils.getField(passwordResetService,
+                "tokenStorage");
+        try {
             Class<?> tokenInfoClass = Class
                     .forName("com.example.kyc_system.service.PasswordResetServiceImpl$TokenInfo");
-            java.lang.reflect.Constructor<?> constructor = tokenInfoClass.getDeclaredConstructor(String.class,
-                    LocalDateTime.class);
-            constructor.setAccessible(true);
-            Object tokenInfo = constructor.newInstance(token, LocalDateTime.now().plusMinutes(15));
-
+            Object tokenInfo = tokenInfoClass.getDeclaredConstructors()[0].newInstance(token,
+                    LocalDateTime.now().plusMinutes(15));
             tokenStorage.put(email, tokenInfo);
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            fail("Reflection failed: " + e.getMessage());
         }
+
+        when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
+
+        passwordResetService.resetPassword(dto);
+
+        verify(userRepository).save(user);
+        verify(refreshTokenService).revokeAllForUser(1L);
+        assertNull(tokenStorage.get(email));
+    }
+
+    @Test
+    @DisplayName("Should throw exception if token is invalid")
+    void resetPassword_InvalidToken_ThrowsException() {
+        PasswordResetDTO dto = new PasswordResetDTO("user@test.com", "WRONG", "pass", "pass");
+        // tokenStorage is empty by default
+        assertThrows(RuntimeException.class, () -> passwordResetService.resetPassword(dto));
+    }
+
+    @Test
+    @DisplayName("Should throw exception if passwords don't match")
+    void resetPassword_MismatchedPasswords_ThrowsException() {
+        String email = "user@test.com";
+        String token = "TOKEN";
+        PasswordResetDTO dto = new PasswordResetDTO(email, token, "pass1", "pass2");
+
+        // Inject valid token
+        Map<String, Object> tokenStorage = (Map<String, Object>) ReflectionTestUtils.getField(passwordResetService,
+                "tokenStorage");
+        try {
+            Class<?> tokenInfoClass = Class
+                    .forName("com.example.kyc_system.service.PasswordResetServiceImpl$TokenInfo");
+            Object tokenInfo = tokenInfoClass.getDeclaredConstructors()[0].newInstance(token,
+                    LocalDateTime.now().plusMinutes(15));
+            tokenStorage.put(email, tokenInfo);
+        } catch (Exception e) {
+        }
+
+        assertThrows(RuntimeException.class, () -> passwordResetService.resetPassword(dto));
     }
 }

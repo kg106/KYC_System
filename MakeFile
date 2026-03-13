@@ -1,0 +1,77 @@
+# ============================================================
+# Makefile — KYC System Docker Commands
+# Usage: make <target>
+# ============================================================
+
+.PHONY: help build up down logs shell clean restart rebuild status
+
+# Default target
+help:
+	@echo ""
+	@echo "  KYC System — Docker Commands"
+	@echo "  ─────────────────────────────────────────"
+	@echo "  make build      Build the Docker image"
+	@echo "  make up         Start all services (detached)"
+	@echo "  make down       Stop and remove containers"
+	@echo "  make restart    Restart the app container only"
+	@echo "  make rebuild    Rebuild image + restart app"
+	@echo "  make logs       Tail logs from all services"
+	@echo "  make logs-app   Tail logs from app only"
+	@echo "  make shell      Open shell in app container"
+	@echo "  make db-shell   Open psql shell in postgres"
+	@echo "  make tools      Start with pgAdmin UI"
+	@echo "  make clean      Remove containers, volumes, images"
+	@echo "  make status     Show running containers"
+	@echo ""
+
+# Build the application image
+build:
+	docker compose build --no-cache
+
+# Start all core services
+up:
+	docker compose up -d
+	@echo "✅ Services started. App: http://localhost:8080"
+	@echo "📖 Swagger UI: http://localhost:8080/swagger-ui.html"
+
+# Start with pgAdmin
+tools:
+	docker compose --profile tools up -d
+	@echo "✅ pgAdmin: http://localhost:5050"
+
+# Stop all services
+down:
+	docker compose down
+
+# View logs
+logs:
+	docker compose logs -f
+
+logs-app:
+	docker compose logs -f kyc-app
+
+# Restart app container only (no DB restart)
+restart:
+	docker compose restart kyc-app
+
+# Rebuild image and restart
+rebuild:
+	docker compose build kyc-app
+	docker compose up -d --no-deps kyc-app
+
+# Open a shell in the app container
+shell:
+	docker exec -it kyc_application /bin/sh
+
+# Open psql in the postgres container
+db-shell:
+	docker exec -it kyc_postgres psql -U $${POSTGRES_USER:-kyc_user} -d $${POSTGRES_DB:-kyc_db}
+
+# Show status of all containers
+status:
+	docker compose ps
+
+# Full cleanup (WARNING: deletes volumes/data)
+clean:
+	docker compose down -v --rmi local
+	@echo "🧹 Cleaned up containers, volumes, and local images"

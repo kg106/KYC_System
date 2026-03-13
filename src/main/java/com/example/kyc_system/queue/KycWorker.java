@@ -2,6 +2,7 @@ package com.example.kyc_system.queue;
 
 import com.example.kyc_system.service.KycOrchestrationService;
 import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -22,6 +23,7 @@ public class KycWorker {
 
     private final KycQueueService queueService;
     private final KycOrchestrationService orchestrationService;
+    private volatile boolean running = true;
 
     /**
      * Spawns a daemon thread that continuously polls requests from the queue.
@@ -50,4 +52,10 @@ public class KycWorker {
         worker.setDaemon(true); // Won't prevent JVM shutdown
         worker.start();
     }
+
+    @PreDestroy // ← add this method
+    public void stop() {
+        running = false;
+    }
+
 }

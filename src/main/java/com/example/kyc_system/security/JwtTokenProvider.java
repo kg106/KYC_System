@@ -80,7 +80,8 @@ public class JwtTokenProvider {
         try {
             Jwts.parserBuilder().setSigningKey(key()).build().parse(token);
             return true;
-        } catch (MalformedJwtException | ExpiredJwtException | UnsupportedJwtException | IllegalArgumentException e) {
+        } catch (io.jsonwebtoken.security.SignatureException | MalformedJwtException | ExpiredJwtException
+                | UnsupportedJwtException | IllegalArgumentException e) {
             return false;
         }
     }

@@ -1,5 +1,6 @@
 package com.example.kyc_system.service.impl;
 
+import com.example.kyc_system.context.TenantContext;
 import com.example.kyc_system.entity.AuditLog;
 import com.example.kyc_system.repository.AuditLogRepository;
 import com.example.kyc_system.service.AuditLogService;
@@ -48,7 +49,7 @@ public class AuditLogServiceImpl implements AuditLogService {
 
     private void logActionInternal(String action, String entityType, Long entityId, Map<String, Object> detailsMap,
             String performedBy) {
-
+        String tenantId = TenantContext.getTenant() != null ? TenantContext.getTenant() : "system";
         Map<String, Object> maskedDetails = maskSensitiveData(detailsMap);
 
         AuditLog auditLog = AuditLog.builder()
@@ -57,6 +58,7 @@ public class AuditLogServiceImpl implements AuditLogService {
                 .entityId(entityId)
                 .newValue(maskedDetails)
                 .performedBy(performedBy)
+                .tenantId(tenantId)
                 .build();
 
         auditLogRepository.save(auditLog);

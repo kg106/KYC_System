@@ -221,7 +221,7 @@ public class OcrServiceImpl implements OcrService {
 
         // Fallback for Aadhaar "Year of Birth: YYYY"
         if (type == DocumentType.AADHAAR) {
-            Pattern pYear = Pattern.compile("(\\d{4})");
+            Pattern pYear = Pattern.compile("(?i)(?:Year of Birth|YOB|DOB).*?([1-2][0-9]{3})");
             Matcher mYear = pYear.matcher(text);
             if (mYear.find()) {
                 return mYear.group(1) + "-01-01";

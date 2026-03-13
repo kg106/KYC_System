@@ -13,6 +13,11 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.springframework.security.access.*;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.LockedException;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 /**
  * Centralized exception handler for all REST controllers.
@@ -92,12 +97,60 @@ public class GlobalExceptionHandler {
                 return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT);
         }
 
+        // Add this handler BEFORE the RuntimeException handler
+        /**
+         * Handles Spring Security authentication failures (wrong password, bad
+         * credentials).
+         * Returns 401 Unauthorized instead of falling through to the 500 handler.
+         */
+        @ExceptionHandler({ AuthenticationException.class, BadCredentialsException.class })
+        public ResponseEntity<ErrorResponse> handleAuthenticationException(
+                        Exception ex, HttpServletRequest request) {
+
+                ErrorResponse errorResponse = ErrorResponse.builder()
+                                .timestamp(LocalDateTime.now())
+                                .status(HttpStatus.UNAUTHORIZED.value())
+                                .error("Unauthorized")
+                                .message("Invalid email or password")
+                                .path(request.getRequestURI())
+                                .build();
+
+                return new ResponseEntity<>(errorResponse, HttpStatus.UNAUTHORIZED);
+        }
+
+        /**
+         * Handles invalid enum values or type mismatches in request parameters.
+         * e.g. passing "DRIVING_LICENSE" for a DocumentType field → 400, not 500.
+         */
+        @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+        public ResponseEntity<ErrorResponse> handleTypeMismatch(
+                        MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
+
+                String message = String.format("Invalid value '%s' for parameter '%s'",
+                                ex.getValue(), ex.getName());
+
+                ErrorResponse errorResponse = ErrorResponse.builder()
+                                .timestamp(LocalDateTime.now())
+                                .status(HttpStatus.BAD_REQUEST.value())
+                                .error("Bad Request")
+                                .message(message)
+                                .path(request.getRequestURI())
+                                .build();
+
+                return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+        }
+
         /**
          * Catches unchecked exceptions — typically programming errors or unexpected
          * failures.
          */
         @ExceptionHandler(RuntimeException.class)
         public ResponseEntity<ErrorResponse> handleRuntimeException(RuntimeException ex, HttpServletRequest request) {
+
+                if (ex instanceof BadCredentialsException || ex instanceof DisabledException
+                                || ex instanceof LockedException) {
+                        return handleAuthenticationException(ex, request);
+                }
 
                 ErrorResponse errorResponse = ErrorResponse.builder()
                                 .timestamp(LocalDateTime.now())
