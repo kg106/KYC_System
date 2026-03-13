@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.*;
 
 import org.springframework.data.domain.Page;
@@ -127,8 +128,11 @@ public class KycController {
 
                 String docNumber = data.getExtractedDocumentNumber();
                 // Mask if Admin
-                if (SecurityContextHolder.getContext().getAuthentication()
-                        .getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"))) {
+                Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+                boolean isAdmin = auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") ||
+                        a.getAuthority().equals("ROLE_TENANT_ADMIN") ||
+                        a.getAuthority().equals("ROLE_SUPER_ADMIN"));
+                if (isAdmin) {
                     docNumber = MaskingUtil.maskDocumentNumber(docNumber);
                 }
                 response.put("extractedDocumentNumber", docNumber);

@@ -3,29 +3,29 @@ version: '3.9'
 services:
 
   # ──────────────────────────────────────────────
-  # PostgreSQL Database
+  # PostgreSQL Database (disabled when using local DB)
   # ──────────────────────────────────────────────
-  postgres:
-    image: postgres:16-alpine
-    container_name: kyc_postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-kyc_db}
-      POSTGRES_USER: ${POSTGRES_USER:-kyc_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-kyc_password}
-    ports:
-      - "5433:5432"          # Host 5433 → Container 5432 (matches your existing config)
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./init-scripts:/docker-entrypoint-initdb.d  # Optional: place .sql init scripts here
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-kyc_user} -d ${POSTGRES_DB:-kyc_db}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-    networks:
-      - kyc_network
+  #postgres:
+  #  image: postgres:16-alpine
+  #  container_name: kyc_postgres
+  #  restart: unless-stopped
+  #  environment:
+  #    POSTGRES_DB: ${POSTGRES_DB:-kyc_db_copy}
+  #    POSTGRES_USER: ${POSTGRES_USER:-kyc_user}
+  #    POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-kyc_password}
+  #  ports:
+  #    - "5433:5432"          # Host 5433 → Container 5432 (matches your existing config)
+  #  volumes:
+  #    - postgres_data:/var/lib/postgresql/data
+  #    - ./init-scripts:/docker-entrypoint-initdb.d  # Optional: place .sql init scripts here
+  #  healthcheck:
+  #    test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-kyc_user} -d ${POSTGRES_DB:-kyc_db}"]
+  #    interval: 10s
+  #    timeout: 5s
+  #    retries: 5
+  #    start_period: 10s
+  #  networks:
+  #    - kyc_network
 
   # ──────────────────────────────────────────────
   # KYC Spring Boot Application
@@ -37,16 +37,15 @@ services:
       target: runtime
     container_name: kyc_application
     restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
-    ports:
-      - "8080:8080"
+    # Use host networking so the container can connect to the local Postgres instance
+    # running on host localhost:5433 without needing host.docker.internal.
+    network_mode: host
+
     environment:
       # ── Database ──
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-kyc_db}
-      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-kyc_user}
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-kyc_password}
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL}
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
 
       # ── JPA / Hibernate ──
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
@@ -85,8 +84,6 @@ services:
     volumes:
       - kyc_uploads:/app/uploads     # Persistent document storage
       - kyc_logs:/app/logs           # Persistent logs
-    networks:
-      - kyc_network
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
       interval: 30s
@@ -97,21 +94,21 @@ services:
   # ──────────────────────────────────────────────
   # pgAdmin (Optional — DB management UI)
   # ──────────────────────────────────────────────
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: kyc_pgadmin
-    restart: unless-stopped
-    profiles:
-      - tools          # Only starts with: docker compose --profile tools up
-    environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@kyc.local}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
-    ports:
-      - "5050:80"
-    depends_on:
-      - postgres
-    networks:
-      - kyc_network
+  #pgadmin:
+  #  image: dpage/pgadmin4:latest
+  #  container_name: kyc_pgadmin
+  #  restart: unless-stopped
+  #  profiles:
+  #    - tools          # Only starts with: docker compose --profile tools up
+  #  environment:
+  #    PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@kyc.local}
+  #    PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+  #  ports:
+  #    - "5050:80"
+  #  depends_on:
+  #    - postgres
+  #  networks:
+  #    - kyc_network
 
 # ──────────────────────────────────────────────
 # Volumes
