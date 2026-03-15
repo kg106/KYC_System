@@ -158,14 +158,18 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public String login(LoginDTO loginDTO) {
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(loginDTO.getEmail(), loginDTO.getPassword()));
+        // This will throw DisabledException automatically (from Fix 1)
+        // if the account is inactive — but we add an explicit check
+        // BEFORE authenticate() to return a cleaner error message.
+        User user = userRepository.findByEmail(loginDTO.getEmail()).orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (!user.getIsActive()) {
+            throw new RuntimeException("Account is deactivated. Please contact support.");
+        }
+
+        Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(loginDTO.getEmail(), loginDTO.getPassword()));
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
-
-        // Get tenantId for this user to embed in JWT
-        User user = userRepository.findByEmail(loginDTO.getEmail())
-                .orElseThrow(() -> new RuntimeException("User not found"));
 
         // Use tenant-aware token generation
         return jwtTokenProvider.generateToken(authentication, user.getTenantId());

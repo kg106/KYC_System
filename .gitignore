@@ -36,7 +36,8 @@ build/
 uploads/
 logs/
 *.log
-src/main/resources/application.properties
+src/main/resources/application-dev.properties
+src/main/resources/application-docker.properties
 application.properties*.sql
 
 *.sql

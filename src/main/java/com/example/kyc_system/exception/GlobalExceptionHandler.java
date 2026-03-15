@@ -18,6 +18,7 @@ import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.LockedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.security.authentication.DisabledException;
 
 /**
  * Centralized exception handler for all REST controllers.
@@ -61,6 +62,13 @@ public class GlobalExceptionHandler {
                                 .build();
 
                 return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+        }
+
+        @ExceptionHandler(DisabledException.class)
+        public ResponseEntity<String> handleDisabledException(DisabledException ex) {
+                return ResponseEntity
+                        .status(HttpStatus.FORBIDDEN)
+                        .body("Account is inactive. Please contact your administrator.");
         }
 
         /** Handles Spring Security access denied (missing required role). */
