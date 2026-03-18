@@ -2,34 +2,6 @@ version: '3.9'
 
 services:
 
-  # ──────────────────────────────────────────────
-  # PostgreSQL Database (disabled when using local DB)
-  # ──────────────────────────────────────────────
-  #postgres:
-  #  image: postgres:16-alpine
-  #  container_name: kyc_postgres
-  #  restart: unless-stopped
-  #  environment:
-  #    POSTGRES_DB: ${POSTGRES_DB:-kyc_db_copy}
-  #    POSTGRES_USER: ${POSTGRES_USER:-kyc_user}
-  #    POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-kyc_password}
-  #  ports:
-  #    - "5433:5432"          # Host 5433 → Container 5432 (matches your existing config)
-  #  volumes:
-  #    - postgres_data:/var/lib/postgresql/data
-  #    - ./init-scripts:/docker-entrypoint-initdb.d  # Optional: place .sql init scripts here
-  #  healthcheck:
-  #    test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-kyc_user} -d ${POSTGRES_DB:-kyc_db}"]
-  #    interval: 10s
-  #    timeout: 5s
-  #    retries: 5
-  #    start_period: 10s
-  #  networks:
-  #    - kyc_network
-
-  # ──────────────────────────────────────────────
-  # KYC Spring Boot Application
-  # ──────────────────────────────────────────────
   kyc-app:
     build:
       context: .
@@ -37,31 +9,37 @@ services:
       target: runtime
     container_name: kyc_application
     restart: unless-stopped
-    # Use host networking so the container can connect to the local Postgres instance
-    # running on host localhost:5433 without needing host.docker.internal.
-    network_mode: host
+    network_mode: host        # keeps access to your local PostgreSQL on localhost:5433
 
     environment:
-      # ── Database ──
+      # ── Spring Profile ──
+      SPRING_PROFILES_ACTIVE: docker
+
+      # ── Database (pointing to your local PostgreSQL via host network) ──
       SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL}
       SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
       SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
 
-      # ── JPA / Hibernate ──
+      # ── JPA ──
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
       SPRING_JPA_SHOW_SQL: "false"
 
-      # ── Tesseract OCR ──
+      # ── Redis (localhost because network_mode: host) ──
+      SPRING_DATA_REDIS_HOST: localhost
+      SPRING_DATA_REDIS_PORT: 6379
+
+      # ── Tesseract ──
       TESSERACT_DATAPATH: /usr/share/tesseract-ocr/5/tessdata
 
       # ── JWT ──
-      APP_JWT_SECRET: ${APP_JWT_SECRET:-change-me-in-production-min-32-chars}
+      APP_JWT_SECRET: ${APP_JWT_SECRET}
       APP_JWT_EXPIRATION_MILLISECONDS: ${APP_JWT_EXPIRATION_MILLISECONDS:-86400000}
+      APP_JWT_REFRESH_EXPIRATION_MILLISECONDS: ${APP_JWT_REFRESH_EXPIRATION_MILLISECONDS:-604800000}
 
       # ── Encryption ──
-      APP_ENCRYPTION_SECRET: ${APP_ENCRYPTION_SECRET:-change-me-in-production-32-chars!}
+      APP_ENCRYPTION_SECRET: ${APP_ENCRYPTION_SECRET}
 
-      # ── Mail (Gmail SMTP) ──
+      # ── Mail ──
       SPRING_MAIL_HOST: smtp.gmail.com
       SPRING_MAIL_PORT: 587
       SPRING_MAIL_USERNAME: ${MAIL_USERNAME}
@@ -74,56 +52,22 @@ services:
       SPRING_SERVLET_MULTIPART_MAX_REQUEST_SIZE: 10MB
       KYC_UPLOAD_DIR: /app/uploads
 
+      # ── KYC Settings ──
+      KYC_STORAGE_BASE_PATH: /app/uploads
+      KYC_FILE_MAX_SIZE: 10MB
+      KYC_FILE_ALLOWED_TYPES: application/pdf,image/jpeg,image/png
+      KYC_REPORT_RECIPIENTS: ${KYC_REPORT_RECIPIENTS:-admin@kyc.local}
+
       # ── Actuator ──
       MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info,metrics
       MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: always
 
-      # ── Spring Profile ──
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
-
     volumes:
-      - kyc_uploads:/app/uploads     # Persistent document storage
-      - kyc_logs:/app/logs           # Persistent logs
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      start_period: 90s
-      retries: 3
+      - kyc_uploads:/app/uploads
+      - kyc_logs:/app/logs
 
-  # ──────────────────────────────────────────────
-  # pgAdmin (Optional — DB management UI)
-  # ──────────────────────────────────────────────
-  #pgadmin:
-  #  image: dpage/pgadmin4:latest
-  #  container_name: kyc_pgadmin
-  #  restart: unless-stopped
-  #  profiles:
-  #    - tools          # Only starts with: docker compose --profile tools up
-  #  environment:
-  #    PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@kyc.local}
-  #    PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
-  #  ports:
-  #    - "5050:80"
-  #  depends_on:
-  #    - postgres
-  #  networks:
-  #    - kyc_network
-
-# ──────────────────────────────────────────────
-# Volumes
-# ──────────────────────────────────────────────
 volumes:
-  postgres_data:
-    driver: local
   kyc_uploads:
     driver: local
   kyc_logs:
     driver: local
-
-# ──────────────────────────────────────────────
-# Networks
-# ──────────────────────────────────────────────
-networks:
-  kyc_network:
-    driver: bridge

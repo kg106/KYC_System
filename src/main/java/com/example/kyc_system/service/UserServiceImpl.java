@@ -15,6 +15,8 @@ import com.example.kyc_system.security.JwtTokenProvider;
 import com.example.kyc_system.util.PasswordUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -161,10 +163,11 @@ public class UserServiceImpl implements UserService {
         // This will throw DisabledException automatically (from Fix 1)
         // if the account is inactive — but we add an explicit check
         // BEFORE authenticate() to return a cleaner error message.
-        User user = userRepository.findByEmail(loginDTO.getEmail()).orElseThrow(() -> new RuntimeException("User not found"));
+//        User user = userRepository.findByEmail(loginDTO.getEmail()).orElseThrow(() -> new RuntimeException("User not found"));
+        User user = userRepository.findByEmail(loginDTO.getEmail()).orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
 
         if (!user.getIsActive()) {
-            throw new RuntimeException("Account is deactivated. Please contact support.");
+            throw new DisabledException("Account is deactivated. Please contact support.");
         }
 
         Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(loginDTO.getEmail(), loginDTO.getPassword()));

@@ -32,7 +32,7 @@ public class KycWorker {
     @PostConstruct
     public void start() {
         Thread worker = new Thread(() -> {
-            while (true) {
+            while (running) {
                 try {
                     // Blocks until a request ID becomes available in the queue
                     Long requestId = queueService.poll();
@@ -41,9 +41,10 @@ public class KycWorker {
                     orchestrationService.processAsync(requestId);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
+                    log.info("KYC worker interrupted, shutting down.");
                     break;
-                } catch (Exception e) {
-                    log.error("Failed to process KYC request", e);
+                } catch (Throwable t) {
+                    log.error("Fatal error in KYC worker while processing request", t);
                     // Don't break — keep the worker alive for the next request
                 }
             }

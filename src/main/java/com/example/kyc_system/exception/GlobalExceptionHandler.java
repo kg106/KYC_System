@@ -18,7 +18,7 @@ import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.LockedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
-import org.springframework.security.authentication.DisabledException;
+// import org.springframework.security.authentication.DisabledException;
 
 /**
  * Centralized exception handler for all REST controllers.
@@ -65,10 +65,16 @@ public class GlobalExceptionHandler {
         }
 
         @ExceptionHandler(DisabledException.class)
-        public ResponseEntity<String> handleDisabledException(DisabledException ex) {
-                return ResponseEntity
-                        .status(HttpStatus.FORBIDDEN)
-                        .body("Account is inactive. Please contact your administrator.");
+        public ResponseEntity<ErrorResponse> handleDisabledException(
+                        DisabledException ex, HttpServletRequest request) {
+                ErrorResponse errorResponse = ErrorResponse.builder()
+                                .timestamp(LocalDateTime.now())
+                                .status(HttpStatus.UNAUTHORIZED.value())
+                                .error("Unauthorized")
+                                .message("Invalid email or password")
+                                .path(request.getRequestURI())
+                                .build();
+                return new ResponseEntity<>(errorResponse, HttpStatus.UNAUTHORIZED);
         }
 
         /** Handles Spring Security access denied (missing required role). */
@@ -85,6 +91,19 @@ public class GlobalExceptionHandler {
                                 .build();
 
                 return new ResponseEntity<>(errorResponse, HttpStatus.FORBIDDEN);
+        }
+
+        @ExceptionHandler(IllegalStateException.class)
+        public ResponseEntity<ErrorResponse> handleIllegalStateException(
+                        IllegalStateException ex, HttpServletRequest request) {
+                ErrorResponse errorResponse = ErrorResponse.builder()
+                                .timestamp(LocalDateTime.now())
+                                .status(HttpStatus.BAD_REQUEST.value())
+                                .error("Bad Request")
+                                .message(ex.getMessage())
+                                .path(request.getRequestURI())
+                                .build();
+                return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
         }
 
         /**

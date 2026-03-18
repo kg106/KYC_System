@@ -96,8 +96,13 @@ class RefreshTokenServiceImplTest {
     @Test
     @DisplayName("Should revoke all tokens for user")
     void revokeAllForUser_Success() {
-        UserDTO user = UserDTO.builder().id(1L).email("user@test.com").build();
-        when(userService.getUserById(1L)).thenReturn(user);
+        // OLD — stubs userService but production calls userRepository:
+        // UserDTO user = UserDTO.builder().id(1L).email("user@test.com").build();
+        // when(userService.getUserById(1L)).thenReturn(user);
+
+        // NEW — stub userRepository.findById() to match production code:
+        User user = User.builder().id(1L).email("user@test.com").build();
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
         when(setOps.members("USER_FAMILIES:user@test.com")).thenReturn(Set.of("f1", "f2"));
 
         refreshTokenService.revokeAllForUser(1L);

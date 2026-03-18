@@ -9,6 +9,7 @@ import com.example.kyc_system.repository.KycRequestRepository;
 import com.example.kyc_system.util.KycFileValidator;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -19,6 +20,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class KycOrchestrationService {
 
         private final TransactionTemplate transactionTemplate;
@@ -96,11 +98,13 @@ public class KycOrchestrationService {
                                 return null;
                         });
 
-                } catch (Exception e) {
+                } catch (Throwable t) {
+                        log.error("Serious error during OCR processing for request {}: {}", requestId, t.getMessage(),
+                                        t);
                         // Handle errors in a separate transaction
                         transactionTemplate.execute(status -> {
                                 KycRequest request = kycRequestRepository.findById(requestId).orElseThrow();
-                                request.setFailureReason("Processing error: " + e.getMessage());
+                                request.setFailureReason("Processing error: " + t.getMessage());
                                 requestService.updateStatus(request.getId(), KycStatus.FAILED);
                                 return null;
                         });

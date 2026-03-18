@@ -175,7 +175,7 @@ public class UserSelfServiceIntegrationTest extends BaseIntegrationTest {
                 .content("""
                         {"email":"%s","password":"%s"}
                         """.formatted(userAEmail, password)))
-                .andExpect(status().isOk()); // BUG: should be 401/403, but isActive is not enforced
+                .andExpect(status().isUnauthorized()); // BUG: should be 401/403, but isActive is not enforced
 
         // ── Step 13: Admin deletes User B → 200 ──────────────────────────────────
         mockMvc.perform(delete("/api/users/" + userBId)

@@ -6,6 +6,7 @@ import com.example.kyc_system.enums.DocumentType;
 import com.example.kyc_system.enums.KycStatus;
 import com.example.kyc_system.queue.KycQueueService;
 import com.example.kyc_system.repository.KycRequestRepository;
+import com.example.kyc_system.util.KycFileValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -64,8 +65,10 @@ class KycOrchestrationServiceTest {
     private KycExtractionService extractionService;
     @Mock
     private KycVerificationService verificationService;
+    // @Mock
+    // private UserService userService;
     @Mock
-    private UserService userService;
+    private KycFileValidator fileValidator;
 
     @InjectMocks
     private KycOrchestrationService orchestrationService;
@@ -102,19 +105,21 @@ class KycOrchestrationServiceTest {
         @Test
         @DisplayName("Should validate, create request, save document, and push to queue")
         void submitKyc_ValidInput_QueuesProperly() {
+            // Arrange
             when(documentService.isVerified(1L, DocumentType.PAN, "PAN123")).thenReturn(false);
             when(requestService.createOrReuse(1L, "PAN")).thenReturn(submittedRequest);
             when(documentService.save(100L, DocumentType.PAN, validFile, "PAN123")).thenReturn(mockDocument);
 
+            // Act
             Long requestId = orchestrationService.submitKyc(1L, DocumentType.PAN, validFile, "PAN123");
 
+            // Assert
             assertEquals(100L, requestId);
+            verify(fileValidator).validate(validFile); // ← CORRECT: verify AFTER act
             verify(documentService).isVerified(1L, DocumentType.PAN, "PAN123");
             verify(requestService).createOrReuse(1L, "PAN");
             verify(documentService).save(100L, DocumentType.PAN, validFile, "PAN123");
             verify(queueService).push(100L);
-
-            // Async services must NOT be called synchronously during submit
             verifyNoInteractions(ocrService);
             verifyNoInteractions(extractionService);
             verifyNoInteractions(verificationService);
@@ -267,6 +272,33 @@ class KycOrchestrationServiceTest {
             // Verify the error-handling transaction was called (3rd transactionTemplate
             // invocation)
             verify(transactionTemplate, atLeast(2)).execute(any(TransactionCallback.class));
+        }
+
+        @Test
+        @DisplayName("OCR throws Error (e.g. UnsatisfiedLinkError) → status should be set to FAILED")
+        void processAsync_OcrThrowsError_SetsStatusToFailed() {
+            when(transactionTemplate.execute(any(TransactionCallback.class)))
+                    .thenReturn(1) // CAS: success
+                    .thenAnswer(invocation -> {
+                        TransactionCallback<?> cb = invocation.getArgument(0);
+                        return cb.doInTransaction(null);
+                    })
+                    .thenAnswer(invocation -> {
+                        TransactionCallback<?> cb = invocation.getArgument(0);
+                        return cb.doInTransaction(null);
+                    });
+
+            when(kycRequestRepository.findById(100L)).thenReturn(Optional.of(submittedRequest));
+            // Simulate native library error
+            when(ocrService.extract(any(File.class), any(DocumentType.class)))
+                    .thenThrow(new UnsatisfiedLinkError("Native library tesseract not found"));
+
+            // Should not propagate — Error is now caught by Throwable catch block
+            assertDoesNotThrow(() -> orchestrationService.processAsync(100L));
+
+            // Verify the error-handling transaction was called
+            verify(transactionTemplate, atLeast(2)).execute(any(TransactionCallback.class));
+            verify(requestService).updateStatus(eq(100L), eq(KycStatus.FAILED));
         }
     }
 }

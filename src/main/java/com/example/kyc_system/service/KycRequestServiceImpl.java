@@ -4,7 +4,7 @@ import com.example.kyc_system.entity.KycRequest;
 import com.example.kyc_system.entity.Tenant;
 import com.example.kyc_system.entity.User;
 import com.example.kyc_system.enums.KycStatus;
-import com.example.kyc_system.exception.BusinessException;
+// import com.example.kyc_system.exception.BusinessException;
 import com.example.kyc_system.repository.KycRequestRepository;
 import com.example.kyc_system.repository.TenantRepository;
 
@@ -21,8 +21,6 @@ import com.example.kyc_system.dto.KycReportDataDTO;
 import com.example.kyc_system.dto.KycRequestSearchDTO;
 import com.example.kyc_system.repository.specification.KycRequestSpecification;
 
-import java.time.LocalDateTime;
-import java.util.Optional;
 import java.util.*;
 import java.time.*;
 import org.springframework.security.core.context.*;
@@ -75,9 +73,8 @@ public class KycRequestServiceImpl implements KycRequestService {
             if (status.equals(KycStatus.PENDING.name()) ||
                     status.equals(KycStatus.SUBMITTED.name()) ||
                     status.equals(KycStatus.PROCESSING.name())) {
-                throw new RuntimeException(
-                        "Only one KYC request for " + documentType
-                                + " can be processed at a time.");
+                throw new IllegalStateException(
+                        "Only one KYC request for " + documentType + " can be processed at a time.");
             }
 
             if (status.equals(KycStatus.FAILED.name())) {
@@ -109,16 +106,15 @@ public class KycRequestServiceImpl implements KycRequestService {
                     getCurrentUser());
             return saved;
         } catch (DataIntegrityViolationException ex) {
-            throw new BusinessException(
-                    "Only one request can be processed at a time");
+            throw new IllegalStateException(
+                    "Only one KYC request for " + documentType + " can be processed at a time.");
         }
     }
 
     @Override
+    @Transactional
     public void updateStatus(Long requestId, KycStatus status) {
-        KycRequest request = repository.findById(requestId)
-                .orElseThrow(() -> new RuntimeException("KYC request not found"));
-        request.setStatus(String.valueOf(status));
+        repository.updateStatus(requestId, status.name());
 
         auditLogService.logAction("UPDATE_STATUS", "KycRequest", requestId,
                 "Updated status to " + status, getCurrentUser());
