@@ -27,7 +27,8 @@
                 },
                 "includeAll": true,
                 "allValue": ".*",
-                "multi": false
+                "multi": false,
+                "hide": 0
             },
             {
                 "name": "tenant",
@@ -44,7 +45,8 @@
                 },
                 "includeAll": true,
                 "allValue": ".*",
-                "refresh": 2
+                "refresh": 2,
+                "hide": 0
             }
         ]
     },
