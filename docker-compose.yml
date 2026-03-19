@@ -2,6 +2,10 @@ version: '3.9'
 
 services:
 
+  # ════════════════════════════════════════════════════════════════════════════
+  # KYC APPLICATION
+  # network_mode: host so it can reach local PostgreSQL and Redis on host ports
+  # ════════════════════════════════════════════════════════════════════════════
   kyc-app:
     build:
       context: .
@@ -9,13 +13,13 @@ services:
       target: runtime
     container_name: kyc_application
     restart: unless-stopped
-    network_mode: host        # keeps access to your local PostgreSQL on localhost:5433
+    network_mode: host
 
     environment:
       # ── Spring Profile ──
       SPRING_PROFILES_ACTIVE: docker
 
-      # ── Database (pointing to your local PostgreSQL via host network) ──
+      # ── Database ──
       SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL}
       SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
       SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
@@ -24,7 +28,7 @@ services:
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
       SPRING_JPA_SHOW_SQL: "false"
 
-      # ── Redis (localhost because network_mode: host) ──
+      # ── Redis ──
       SPRING_DATA_REDIS_HOST: localhost
       SPRING_DATA_REDIS_PORT: 6379
 
@@ -58,16 +62,111 @@ services:
       KYC_FILE_ALLOWED_TYPES: application/pdf,image/jpeg,image/png
       KYC_REPORT_RECIPIENTS: ${KYC_REPORT_RECIPIENTS:-admin@kyc.local}
 
-      # ── Actuator ──
-      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info,metrics
+      # ── Actuator + Prometheus ──
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info,metrics,prometheus
       MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: always
+      MANAGEMENT_METRICS_TAGS_APPLICATION: kyc-system
+
+      # ── Logging (Promtail tails this directory) ──
+      LOGGING_FILE_PATH: /app/logs
 
     volumes:
       - kyc_uploads:/app/uploads
-      - kyc_logs:/app/logs
+      - kyc_logs:/app/logs        # shared with Promtail below
 
+  # ════════════════════════════════════════════════════════════════════════════
+  # PROMETHEUS — metrics collection
+  # Scrapes /actuator/prometheus on the host app via host.docker.internal
+  # ════════════════════════════════════════════════════════════════════════════
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: kyc_prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # reach localhost:8080 on host
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.enable-lifecycle'
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # LOKI — log aggregation and storage
+  # Prometheus equivalent but for logs. Stores logs indexed by labels.
+  # ════════════════════════════════════════════════════════════════════════════
+  loki:
+    image: grafana/loki:2.9.4
+    container_name: kyc_loki
+    restart: unless-stopped
+    user: "0"
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./loki/loki.yml:/etc/loki/loki.yml:ro
+      - loki_data:/tmp/loki
+    command: -config.file=/etc/loki/loki.yml
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --tries=1 --spider http://localhost:3100/ready || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # PROMTAIL — log collector/shipper
+  # Tails the kyc-app log files and ships them to Loki.
+  # Shares the kyc_logs volume with kyc-app so it can read the log files.
+  # ════════════════════════════════════════════════════════════════════════════
+  promtail:
+    image: grafana/promtail:2.9.4
+    container_name: kyc_promtail
+    restart: unless-stopped
+    volumes:
+      - ./promtail/promtail.yml:/etc/promtail/promtail.yml:ro
+      - kyc_logs:/var/log/kyc-app:ro   # read-only access to the app logs
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: -config.file=/etc/promtail/promtail.yml
+    depends_on:
+      loki:
+        condition: service_healthy
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # GRAFANA — unified metrics + logs dashboard
+  # Auto-provisioned with Prometheus and Loki datasources.
+  # ════════════════════════════════════════════════════════════════════════════
+  grafana:
+    image: grafana/grafana:10.4.2
+    container_name: kyc_grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_FEATURE_TOGGLES_ENABLE: "lokiLive"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
+      - loki
+
+# ══════════════════════════════════════════════════════════════════════════════
+# NAMED VOLUMES
+# ══════════════════════════════════════════════════════════════════════════════
 volumes:
   kyc_uploads:
     driver: local
   kyc_logs:
+    driver: local
+  prometheus_data:
+    driver: local
+  loki_data:
+    driver: local
+  grafana_data:
     driver: local

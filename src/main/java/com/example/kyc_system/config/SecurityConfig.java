@@ -87,11 +87,14 @@ public class SecurityConfig {
                 http.csrf(AbstractHttpConfigurer::disable)
                                 .authorizeHttpRequests(authorize -> authorize
                                                 .requestMatchers("/api/auth/**").permitAll()
+                                                .requestMatchers("/error").permitAll()
                                                 .requestMatchers("/api/super/**")
                                                 .hasRole("SUPER_ADMIN")
                                                 .requestMatchers("/v3/api-docs/**",
                                                                 "/swagger-ui/**",
-                                                                "/swagger-ui.html")
+                                                                "/swagger-ui.html",
+                                                                "/actuator",
+                                                                "/actuator/**")
                                                 .permitAll()
                                                 .requestMatchers(HttpMethod.GET,
                                                                 "/api/**")

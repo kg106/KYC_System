@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <!-- ── Import Spring Boot defaults ─────────────────────────────────────── -->
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <!-- ── Properties ──────────────────────────────────────────────────────── -->
+    <springProperty name="APP_NAME"  scope="context" source="spring.application.name"  defaultValue="kyc-system"/>
+    <springProperty name="LOG_PATH"  scope="context" source="logging.file.path"        defaultValue="logs"/>
+    <springProperty name="LOG_LEVEL" scope="context" source="logging.level.root"       defaultValue="INFO"/>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         CONSOLE APPENDER
+         Human-readable coloured output for local development.
+         Active on all profiles.
+    ═══════════════════════════════════════════════════════════════════════ -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr(%5p){highlight} %clr([%15.15t]){faint} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %m%n%wEx</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         JSON FILE APPENDER
+         Structured JSON logs written to file — Promtail tails this file.
+         Each log line is a single valid JSON object, making it trivial to
+         parse in Loki using the `json` pipeline stage.
+
+         MDC fields included:
+           tenantId   — resolved by TenantResolutionFilter
+           userId     — set on authenticated requests
+           requestId  — unique per HTTP request (set by MdcFilter)
+           traceId    — for distributed tracing correlation
+    ═══════════════════════════════════════════════════════════════════════ -->
+    <appender name="JSON_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}/kyc-app.log</file>
+
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <!-- Roll daily, keep 30 days, max total 1GB -->
+            <fileNamePattern>${LOG_PATH}/kyc-app.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <maxFileSize>100MB</maxFileSize>
+            </timeBasedFileNamingAndTriggeringPolicy>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <!-- Rename the default "message" field (already called message — keep it) -->
+            <fieldNames>
+                <timestamp>timestamp</timestamp>
+                <version>[ignore]</version>
+                <levelValue>[ignore]</levelValue>
+            </fieldNames>
+
+            <!-- Include ALL MDC fields automatically as top-level JSON fields -->
+            <!-- Promtail promotes tenantId and level to Loki labels -->
+            <includeMdcKeyName>tenantId</includeMdcKeyName>
+            <includeMdcKeyName>userId</includeMdcKeyName>
+            <includeMdcKeyName>requestId</includeMdcKeyName>
+            <includeMdcKeyName>traceId</includeMdcKeyName>
+
+            <!-- Static fields present on every log line -->
+            <customFields>{"app":"${APP_NAME}","env":"${SPRING_PROFILES_ACTIVE:-local}"}</customFields>
+
+            <!-- Include stack traces inline in the JSON -->
+            <throwableConverter class="net.logstash.logback.stacktrace.ShortenedThrowableConverter">
+                <maxDepthPerCause>20</maxDepthPerCause>
+                <maxLength>8192</maxLength>
+                <rootCauseFirst>true</rootCauseFirst>
+            </throwableConverter>
+        </encoder>
+    </appender>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         ASYNC WRAPPER
+         Wrap the file appender in an async appender so logging never blocks
+         the request thread. Queue size 512, discard threshold 0 (never drop).
+    ═══════════════════════════════════════════════════════════════════════ -->
+    <appender name="ASYNC_JSON_FILE" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>512</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <includeCallerData>false</includeCallerData>
+        <appender-ref ref="JSON_FILE"/>
+    </appender>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         PROFILE-SPECIFIC CONFIGURATION
+    ═══════════════════════════════════════════════════════════════════════ -->
+
+    <!-- LOCAL / DEV: console only, DEBUG level for your own code -->
+    <springProfile name="dev,local,default">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+        <logger name="com.example.kyc_system" level="DEBUG" additivity="false">
+            <appender-ref ref="CONSOLE"/>
+        </logger>
+    </springProfile>
+
+    <!-- DOCKER / PROD: JSON file + console, INFO level -->
+    <springProfile name="docker,prod">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="ASYNC_JSON_FILE"/>
+        </root>
+        <logger name="com.example.kyc_system" level="INFO" additivity="false">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="ASYNC_JSON_FILE"/>
+        </logger>
+        <!-- Suppress noisy framework logs -->
+        <logger name="org.hibernate.SQL"                       level="WARN"/>
+        <logger name="org.springframework.security"            level="WARN"/>
+        <logger name="org.springframework.web"                 level="WARN"/>
+        <logger name="org.springframework.data"                level="WARN"/>
+        <logger name="io.lettuce"                              level="WARN"/>
+        <logger name="com.zaxxer.hikari"                       level="WARN"/>
+    </springProfile>
+
+    <!-- TEST: console only, no file I/O during tests -->
+    <springProfile name="test">
+        <root level="WARN">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+        <logger name="com.example.kyc_system" level="INFO" additivity="false">
+            <appender-ref ref="CONSOLE"/>
+        </logger>
+    </springProfile>
+
+</configuration>

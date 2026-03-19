@@ -30,7 +30,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
  * 4. Runtime exceptions (500)
  * 5. General exceptions (500)
  */
-@RestControllerAdvice
+@RestControllerAdvice(basePackages = "com.example.kyc_system.controller")
 public class GlobalExceptionHandler {
 
         /**

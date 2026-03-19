@@ -1,0 +1,72 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+
+  # ── KYC Application Logs (JSON structured) ──────────────────────────────────
+  # Tails the app log file written by logback-spring.xml
+  - job_name: kyc-app-file
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          app: kyc-system
+          env: docker
+          __path__: /var/log/kyc-app/*.log
+
+    # Parse the JSON log lines written by logback JSON encoder
+    pipeline_stages:
+
+      # Step 1: parse the entire line as JSON
+      - json:
+          expressions:
+            level:      level
+            logger:     logger_name
+            thread:     thread_name
+            message:    message
+            tenant:     mdc_tenantId
+            traceId:    mdc_traceId
+            requestId:  mdc_requestId
+            userId:     mdc_userId
+            stacktrace: stack_trace
+
+      # Step 2: promote parsed fields to Loki labels
+      # Keep label cardinality low — only truly categorical fields go here
+      - labels:
+          level:
+          tenant:
+
+      # Step 3: set the log timestamp from the JSON field
+      - timestamp:
+          source: timestamp
+          format: RFC3339Nano
+          fallback_formats:
+            - "2006-01-02T15:04:05.000Z07:00"
+
+      # Step 4: drop noisy health-check lines to reduce storage
+      - drop:
+          expression: '.*actuator/health.*'
+          drop_counter_reason: health_check_noise
+
+      # Step 5: drop prometheus scrape noise
+      - drop:
+          expression: '.*actuator/prometheus.*'
+          drop_counter_reason: prometheus_scrape_noise
+
+  # ── KYC Application stdout (fallback if file logging is unavailable) ────────
+  - job_name: kyc-app-stdout
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          app: kyc-system
+          env: docker
+          source: stdout
+          __path__: /var/log/kyc-app/stdout.log

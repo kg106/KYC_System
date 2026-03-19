@@ -8,6 +8,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.MDC;
 import org.springframework.core.annotation.Order;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -39,6 +40,8 @@ public class TenantResolutionFilter extends OncePerRequestFilter {
 
     private final TenantRepository tenantRepository;
 
+    private static final String MDC_TENANT_KEY = "tenantId";
+
     // These paths don't need tenant context (public endpoints)
     private static final List<String> EXCLUDED_PATHS = List.of(
             "/api/auth/login",
@@ -46,7 +49,9 @@ public class TenantResolutionFilter extends OncePerRequestFilter {
             "/api/auth/change-password",
             "/swagger-ui/",
             "/v3/api-docs",
-            "/swagger-ui");
+            "/swagger-ui",
+            "/actuator",
+            "/error");
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
@@ -64,6 +69,7 @@ public class TenantResolutionFilter extends OncePerRequestFilter {
             // Superadmin bypasses tenant scoping — they can see all tenants' data
             if (auth != null && hasRole(auth, "ROLE_SUPER_ADMIN")) {
                 TenantContext.setTenant(TenantContext.SUPER_ADMIN_TENANT);
+                MDC.put(MDC_TENANT_KEY, TenantContext.SUPER_ADMIN_TENANT); // ← MDC
                 chain.doFilter(request, response);
                 return;
             }
@@ -91,10 +97,14 @@ public class TenantResolutionFilter extends OncePerRequestFilter {
 
             // Set tenant for downstream services to use
             TenantContext.setTenant(tenantId);
+            MDC.put(MDC_TENANT_KEY, tenantId); // ← MDC: overwrite the "resolving" placeholder
+
             chain.doFilter(request, response);
 
         } finally {
             TenantContext.clear(); // ALWAYS clean up — prevents thread pool leaks
+            // Note: MdcLoggingFilter (Order 1) owns the MDC lifecycle and clears it.
+            // We only overwrite the tenantId key here; we do NOT call MDC.clear().
         }
     }
 

@@ -1,0 +1,277 @@
+{
+    "title": "KYC System — Logs",
+    "uid": "kyc-logs-v1",
+    "version": 1,
+    "schemaVersion": 39,
+    "timezone": "browser",
+    "refresh": "30s",
+    "time": {
+        "from": "now-1h",
+        "to": "now"
+    },
+    "tags": [
+        "kyc",
+        "logs",
+        "loki"
+    ],
+    "templating": {
+        "list": [
+            {
+                "name": "level",
+                "label": "Log Level",
+                "type": "custom",
+                "query": "ERROR,WARN,INFO,DEBUG",
+                "current": {
+                    "text": "All",
+                    "value": "$__all"
+                },
+                "includeAll": true,
+                "allValue": ".*",
+                "multi": false
+            },
+            {
+                "name": "tenant",
+                "label": "Tenant",
+                "type": "query",
+                "datasource": {
+                    "type": "loki",
+                    "uid": "loki"
+                },
+                "query": "label_values({app=\"kyc-system\"}, tenant)",
+                "current": {
+                    "text": "All",
+                    "value": "$__all"
+                },
+                "includeAll": true,
+                "allValue": ".*",
+                "refresh": 2
+            }
+        ]
+    },
+    "panels": [
+        {
+            "id": 1,
+            "title": "Log Volume Over Time",
+            "type": "timeseries",
+            "gridPos": {
+                "x": 0,
+                "y": 0,
+                "w": 24,
+                "h": 6
+            },
+            "datasource": {
+                "type": "loki",
+                "uid": "loki"
+            },
+            "targets": [
+                {
+                    "expr": "sum(count_over_time({app=\"kyc-system\", level=\"ERROR\"}[1m]))",
+                    "legendFormat": "ERROR",
+                    "refId": "A"
+                },
+                {
+                    "expr": "sum(count_over_time({app=\"kyc-system\", level=\"WARN\"}[1m]))",
+                    "legendFormat": "WARN",
+                    "refId": "B"
+                },
+                {
+                    "expr": "sum(count_over_time({app=\"kyc-system\", level=\"INFO\"}[1m]))",
+                    "legendFormat": "INFO",
+                    "refId": "C"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "custom": {
+                        "lineWidth": 2,
+                        "fillOpacity": 10
+                    }
+                },
+                "overrides": [
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "ERROR"
+                        },
+                        "properties": [
+                            {
+                                "id": "color",
+                                "value": {
+                                    "fixedColor": "#F2495C",
+                                    "mode": "fixed"
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "WARN"
+                        },
+                        "properties": [
+                            {
+                                "id": "color",
+                                "value": {
+                                    "fixedColor": "#FF9830",
+                                    "mode": "fixed"
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "INFO"
+                        },
+                        "properties": [
+                            {
+                                "id": "color",
+                                "value": {
+                                    "fixedColor": "#73BF69",
+                                    "mode": "fixed"
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "id": 2,
+            "title": "Error Logs",
+            "type": "logs",
+            "gridPos": {
+                "x": 0,
+                "y": 6,
+                "w": 24,
+                "h": 8
+            },
+            "datasource": {
+                "type": "loki",
+                "uid": "loki"
+            },
+            "options": {
+                "showTime": true,
+                "sortOrder": "Descending",
+                "wrapLogMessage": true,
+                "prettifyLogMessage": true,
+                "enableLogDetails": true
+            },
+            "targets": [
+                {
+                    "expr": "{app=\"kyc-system\", level=\"ERROR\"}",
+                    "refId": "A"
+                }
+            ]
+        },
+        {
+            "id": 3,
+            "title": "KYC Submissions",
+            "type": "logs",
+            "gridPos": {
+                "x": 0,
+                "y": 14,
+                "w": 12,
+                "h": 8
+            },
+            "datasource": {
+                "type": "loki",
+                "uid": "loki"
+            },
+            "options": {
+                "showTime": true,
+                "sortOrder": "Descending",
+                "wrapLogMessage": true,
+                "enableLogDetails": true
+            },
+            "targets": [
+                {
+                    "expr": "{app=\"kyc-system\"} |= \"SUBMIT\"",
+                    "refId": "A"
+                }
+            ]
+        },
+        {
+            "id": 4,
+            "title": "Security Events (Login / Logout)",
+            "type": "logs",
+            "gridPos": {
+                "x": 12,
+                "y": 14,
+                "w": 12,
+                "h": 8
+            },
+            "datasource": {
+                "type": "loki",
+                "uid": "loki"
+            },
+            "options": {
+                "showTime": true,
+                "sortOrder": "Descending",
+                "wrapLogMessage": true,
+                "enableLogDetails": true
+            },
+            "targets": [
+                {
+                    "expr": "{app=\"kyc-system\"} |~ \"login|logout|token|blacklist|revoke\"",
+                    "refId": "A"
+                }
+            ]
+        },
+        {
+            "id": 5,
+            "title": "All Logs (filtered)",
+            "type": "logs",
+            "gridPos": {
+                "x": 0,
+                "y": 22,
+                "w": 24,
+                "h": 10
+            },
+            "datasource": {
+                "type": "loki",
+                "uid": "loki"
+            },
+            "options": {
+                "showTime": true,
+                "sortOrder": "Descending",
+                "wrapLogMessage": true,
+                "prettifyLogMessage": true,
+                "enableLogDetails": true
+            },
+            "targets": [
+                {
+                    "expr": "{app=\"kyc-system\", level=~\"$level\", tenant=~\"$tenant\"}",
+                    "refId": "A"
+                }
+            ]
+        },
+        {
+            "id": 6,
+            "title": "Warning Logs",
+            "type": "logs",
+            "gridPos": {
+                "x": 0,
+                "y": 32,
+                "w": 24,
+                "h": 8
+            },
+            "datasource": {
+                "type": "loki",
+                "uid": "loki"
+            },
+            "options": {
+                "showTime": true,
+                "sortOrder": "Descending",
+                "wrapLogMessage": true,
+                "enableLogDetails": true
+            },
+            "targets": [
+                {
+                    "expr": "{app=\"kyc-system\", level=\"WARN\"}",
+                    "refId": "A"
+                }
+            ]
+        }
+    ]
+}
