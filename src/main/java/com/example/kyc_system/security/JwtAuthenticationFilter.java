@@ -5,6 +5,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -30,6 +31,7 @@ import java.util.Map;
  * details map, so TenantResolutionFilter can use it downstream.
  */
 @Component
+@Slf4j
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
@@ -58,6 +60,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 && !tokenBlacklistService.isTokenBlacklisted(token)) {
 
             String username = jwtTokenProvider.getUsername(token);
+            log.debug("JWT authenticated: user={}", username);
             UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
             // Build the authentication object and set it in SecurityContext

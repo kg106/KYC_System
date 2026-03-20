@@ -8,6 +8,7 @@ import com.example.kyc_system.repository.KycDocumentRepository;
 import com.example.kyc_system.repository.KycRequestRepository;
 // import com.example.kyc_system.util.KycFileValidator;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -22,6 +23,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class KycDocumentServiceImpl implements KycDocumentService {
 
     private final KycDocumentRepository repository;
@@ -51,7 +53,9 @@ public class KycDocumentServiceImpl implements KycDocumentService {
                 .encrypted(true)
                 .build();
 
-        return repository.save(doc);
+        KycDocument saved = repository.save(doc);
+        log.info("KYC document saved: docId={}, requestId={}, type={}", saved.getId(), requestId, documentType);
+        return saved;
     }
 
     @Override
@@ -67,10 +71,7 @@ public class KycDocumentServiceImpl implements KycDocumentService {
                 Path path = Paths.get(document.getDocumentPath());
                 Files.deleteIfExists(path);
             } catch (IOException e) {
-                // Log the error but don't stop the deletion process
-                // In a real application, you might want to log this properly
-                System.err.println("Failed to delete file: " + document.getDocumentPath());
-                e.printStackTrace();
+                log.error("Failed to delete file from disk: {}", document.getDocumentPath(), e);
             }
         }
     }
@@ -84,6 +85,7 @@ public class KycDocumentServiceImpl implements KycDocumentService {
             Files.write(path, file.getBytes());
             return path.toString();
         } catch (IOException e) {
+            log.error("Failed to store uploaded file: {}", file.getOriginalFilename(), e);
             throw new RuntimeException("Failed to store file", e);
         }
     }

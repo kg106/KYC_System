@@ -5,6 +5,7 @@ import com.example.kyc_system.enums.DocumentType;
 import net.sourceforge.tess4j.ITesseract;
 import net.sourceforge.tess4j.Tesseract;
 import net.sourceforge.tess4j.TesseractException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -15,6 +16,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Service
+@Slf4j
 public class OcrServiceImpl implements OcrService {
 
     @Value("${tesseract.datapath}")
@@ -29,6 +31,7 @@ public class OcrServiceImpl implements OcrService {
     @Override
     public OcrResult extract(File file, DocumentType type) {
         try {
+            log.info("OCR extraction started: file={}, docType={}", file.getName(), type);
             ITesseract tesseract = getTesseractInstance();
             tesseract.setLanguage("eng");
 
@@ -37,13 +40,17 @@ public class OcrServiceImpl implements OcrService {
             Map<String, Object> raw = new HashMap<>();
             raw.put("text", result);
 
-            return OcrResult.builder()
+            OcrResult ocrResult = OcrResult.builder()
                     .name(extractName(result, type))
                     .dob(extractDob(result, type))
                     .documentNumber(extractDocumentNumber(result, type))
                     .rawResponse(raw)
                     .build();
+            log.info("OCR extraction complete: docType={}, nameExtracted={}, docNumberExtracted={}",
+                    type, ocrResult.getName() != null, ocrResult.getDocumentNumber() != null);
+            return ocrResult;
         } catch (TesseractException e) {
+            log.error("OCR extraction failed: file={}, docType={}", file.getName(), type, e);
             throw new RuntimeException("OCR failed", e);
         }
     }

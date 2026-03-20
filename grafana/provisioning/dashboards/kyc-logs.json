@@ -1,7 +1,7 @@
 {
     "title": "KYC System — Logs",
     "uid": "kyc-logs-v1",
-    "version": 1,
+    "version": 2,
     "schemaVersion": 39,
     "timezone": "browser",
     "refresh": "30s",
@@ -26,27 +26,8 @@
                     "value": "$__all"
                 },
                 "includeAll": true,
-                "allValue": ".*",
-                "multi": false,
-                "hide": 0
-            },
-            {
-                "name": "tenant",
-                "label": "Tenant",
-                "type": "query",
-                "datasource": {
-                    "type": "loki",
-                    "uid": "loki"
-                },
-                "query": "label_values({app=\"kyc-system\"}, tenant)",
-                "current": {
-                    "text": "All",
-                    "value": "$__all"
-                },
-                "includeAll": true,
-                "allValue": ".*",
-                "refresh": 2,
-                "hide": 0
+                "allValue": ".+",
+                "multi": false
             }
         ]
     },
@@ -222,7 +203,7 @@
         },
         {
             "id": 5,
-            "title": "All Logs (filtered)",
+            "title": "All Logs (filtered by level)",
             "type": "logs",
             "gridPos": {
                 "x": 0,
@@ -243,7 +224,7 @@
             },
             "targets": [
                 {
-                    "expr": "{app=\"kyc-system\", level=~\"$level\", tenant=~\"$tenant\"}",
+                    "expr": "{app=\"kyc-system\", level=~\"$level\"}",
                     "refId": "A"
                 }
             ]

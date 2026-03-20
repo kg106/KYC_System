@@ -2,6 +2,7 @@ package com.example.kyc_system.util;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import lombok.extern.slf4j.Slf4j;
 
 import javax.crypto.Cipher;
 import javax.crypto.spec.IvParameterSpec;
@@ -10,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
 @Component
+@Slf4j
 public class EncryptionUtil {
 
     private static final String ALGORITHM = "AES/CBC/PKCS5Padding";
@@ -27,7 +29,8 @@ public class EncryptionUtil {
             cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, ivParameterSpec);
             return Base64.getEncoder().encodeToString(cipher.doFinal(strToEncrypt.getBytes(StandardCharsets.UTF_8)));
         } catch (Exception e) {
-            throw new RuntimeException("Error while encrypting: " + e.toString());
+            log.error("Encryption error: {}", e.getMessage());
+            throw new RuntimeException("Error while encrypting: " + e.getMessage());
         }
     }
 
@@ -39,7 +42,8 @@ public class EncryptionUtil {
             cipher.init(Cipher.DECRYPT_MODE, secretKeySpec, ivParameterSpec);
             return new String(cipher.doFinal(Base64.getDecoder().decode(strToDecrypt)));
         } catch (Exception e) {
-            throw new RuntimeException("Error while decrypting: " + e.toString());
+            log.debug("Decryption error: {}", e.getMessage());
+            throw new RuntimeException("Error while decrypting: " + e.getMessage());
         }
     }
 

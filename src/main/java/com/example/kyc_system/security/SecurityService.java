@@ -3,12 +3,14 @@ package com.example.kyc_system.security;
 import com.example.kyc_system.dto.UserDTO;
 import com.example.kyc_system.service.UserService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 @Service("securityService")
 @RequiredArgsConstructor
+@Slf4j
 public class SecurityService {
 
     private final UserService userService;
@@ -16,11 +18,13 @@ public class SecurityService {
     public boolean canAccessUser(Long userId) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
+            log.trace("Access denied: Not authenticated");
             return false;
         }
 
         // 1. Super Admin has full global access (unscoped)
         if (hasRole(authentication, "ROLE_SUPER_ADMIN")) {
+            log.debug("Access granted: SUPER_ADMIN for userId={}", userId);
             return true;
         }
 
@@ -31,6 +35,7 @@ public class SecurityService {
             // but here we check if the target user belongs to the same tenant as the admin.
             targetUser = userService.getUserById(userId);
         } catch (Exception e) {
+            log.warn("Access denied: Target user with id={} not found", userId);
             return false;
         }
 
@@ -38,12 +43,21 @@ public class SecurityService {
         if (hasRole(authentication, "ROLE_TENANT_ADMIN") || hasRole(authentication, "ROLE_ADMIN")) {
             // Get current user's tenant (passed in JWT details by JwtAuthenticationFilter)
             String adminTenantId = getTenantId(authentication);
-            return targetUser.getTenantId() != null && targetUser.getTenantId().equals(adminTenantId);
+            boolean result = targetUser.getTenantId() != null && targetUser.getTenantId().equals(adminTenantId);
+            if (!result) {
+                log.warn("Access denied: Admin from tenant {} tried to access user from bucket {}", adminTenantId,
+                        targetUser.getTenantId());
+            }
+            return result;
         }
 
         // 4. Regular User can only access their own data
         String currentEmail = authentication.getName();
-        return targetUser.getEmail().equals(currentEmail);
+        boolean result = targetUser.getEmail().equals(currentEmail);
+        if (!result) {
+            log.warn("Access denied: User {} tried to access user {}", currentEmail, targetUser.getEmail());
+        }
+        return result;
     }
 
     private boolean hasRole(Authentication auth, String role) {

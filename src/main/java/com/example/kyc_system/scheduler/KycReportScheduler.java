@@ -35,6 +35,7 @@ public class KycReportScheduler {
 
     // Optional: Admin can trigger manually via endpoint
     public void triggerManually(LocalDate dateFrom, LocalDate dateTo) {
+        log.info("Manual report trigger requested: from={} to={}", dateFrom, dateTo);
         KycMonthlyReportDTO report = reportService.generateMonthlyReport(dateFrom, dateTo);
         emailService.sendMonthlyReport(report);
     }

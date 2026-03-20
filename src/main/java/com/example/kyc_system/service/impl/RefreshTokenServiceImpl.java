@@ -7,6 +7,7 @@ import com.example.kyc_system.security.JwtTokenProvider;
 import com.example.kyc_system.service.RefreshTokenService;
 import com.example.kyc_system.service.UserService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -18,6 +19,7 @@ import java.util.*;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class RefreshTokenServiceImpl implements RefreshTokenService {
 
     private final StringRedisTemplate redisTemplate;
@@ -40,6 +42,7 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
         String familyId = UUID.randomUUID().toString();
         String tokenValue = UUID.randomUUID().toString();
 
+        log.info("Creating refresh token family: userId={}, email={}, familyId={}", userId, email, familyId);
         String redisKey = RT_FAMILY_PREFIX + familyId;
         String redisValue = email + ":" + tokenValue;
 
@@ -59,12 +62,16 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
         // Bypasses UserService.getUserById() tenant check
         // Used during login where TenantContext may not be set
         User user = userRepository.findById(userId) // ← inject UserRepository
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> {
+                    log.warn("Failed to create refresh token: User {} not found", userId);
+                    return new RuntimeException("User not found");
+                });
         String email = user.getEmail();
 
         String familyId = UUID.randomUUID().toString();
         String tokenValue = UUID.randomUUID().toString();
 
+        log.info("Creating refresh token family (direct): userId={}, email={}, familyId={}", userId, email, familyId);
         String redisKey = RT_FAMILY_PREFIX + familyId;
         String redisValue = email + ":" + tokenValue;
 
@@ -103,11 +110,14 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
 
         if (!presentedTokenValue.equals(currentTokenValue)) {
             // REUSE DETECTED! Potential token theft. Revoke entire family.
+            log.warn("REFRESH TOKEN REUSE DETECTED: email={}, familyId={}. Revoking all tokens in family.", email,
+                    familyId);
             revokeFamily(familyId);
             throw new RuntimeException("Refresh token reuse detected. Family revoked.");
         }
 
         // Token is valid. Rotate it.
+        log.info("Rotating refresh token for family: email={}, familyId={}", email, familyId);
         String newTokenValue = UUID.randomUUID().toString();
         String newRedisValue = email + ":" + newTokenValue;
 

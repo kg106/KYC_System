@@ -6,6 +6,7 @@ import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
+import lombok.extern.slf4j.Slf4j;
 
 import java.security.Key;
 import java.util.Date;
@@ -18,6 +19,7 @@ import java.util.Date;
  * - Calculating remaining TTL (for blacklisting on logout)
  */
 @Component
+@Slf4j
 public class JwtTokenProvider {
 
     @Value("${app.jwt-secret}")
@@ -82,6 +84,7 @@ public class JwtTokenProvider {
             return true;
         } catch (io.jsonwebtoken.security.SignatureException | MalformedJwtException | ExpiredJwtException
                 | UnsupportedJwtException | IllegalArgumentException e) {
+            log.debug("JWT validation failed: {}", e.getMessage());
             return false;
         }
     }

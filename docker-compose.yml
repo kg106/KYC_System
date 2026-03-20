@@ -33,7 +33,7 @@ services:
       SPRING_DATA_REDIS_PORT: 6379
 
       # ── Tesseract ──
-      TESSERACT_DATAPATH: /usr/share/tesseract-ocr/5/tessdata
+      TESSERACT_DATAPATH: /usr/share/tesseract-ocr/4.00/tessdata
 
       # ── JWT ──
       APP_JWT_SECRET: ${APP_JWT_SECRET}
@@ -72,7 +72,7 @@ services:
 
     volumes:
       - kyc_uploads:/app/uploads
-      - ./logs:/app/logs        # shared with Promtail below
+      - kyc_logs:/app/logs        # Shared named volume for logs
 
   # ════════════════════════════════════════════════════════════════════════════
   # PROMETHEUS — metrics collection
@@ -142,7 +142,7 @@ services:
     restart: unless-stopped
     volumes:
       - ./promtail/promtail.yml:/etc/promtail/promtail.yml:ro
-      - ./logs:/var/log/kyc-app:ro   # read-only access to the app logs
+      - kyc_logs:/var/log/kyc-app:ro   # named volume access
       - /var/run/docker.sock:/var/run/docker.sock:ro
     command: -config.file=/etc/promtail/promtail.yml
     depends_on:
@@ -182,4 +182,6 @@ volumes:
   loki_data:
     driver: local
   grafana_data:
+    driver: local
+  kyc_logs:
     driver: local

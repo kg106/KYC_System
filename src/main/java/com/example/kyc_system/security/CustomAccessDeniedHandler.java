@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.stereotype.Component;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
@@ -20,12 +21,15 @@ import java.util.Map;
  * Returns a structured JSON error instead of Spring's default HTML page.
  */
 @Component
+@Slf4j
 public class CustomAccessDeniedHandler implements AccessDeniedHandler {
 
     @Override
     public void handle(HttpServletRequest request, HttpServletResponse response,
             AccessDeniedException accessDeniedException) throws IOException {
 
+        log.warn("Forbidden access attempt: path={}, message={}", request.getServletPath(),
+                accessDeniedException.getMessage());
         response.setStatus(HttpStatus.FORBIDDEN.value());
         response.setContentType("application/json");
 

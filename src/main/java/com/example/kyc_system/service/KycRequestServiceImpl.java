@@ -10,6 +10,7 @@ import com.example.kyc_system.repository.TenantRepository;
 
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
@@ -28,6 +29,7 @@ import org.springframework.security.core.context.*;
 @Service
 @Transactional
 @RequiredArgsConstructor
+@Slf4j
 public class KycRequestServiceImpl implements KycRequestService {
 
     private final KycRequestRepository repository;
@@ -56,6 +58,8 @@ public class KycRequestServiceImpl implements KycRequestService {
                 userId, tenantId, startOfDay);
 
         if (totalAttemptsToday >= tenant.getMaxDailyAttempts()) {
+            log.warn("Daily KYC limit reached: userId={}, tenantId={}, attempts={}", userId, tenantId,
+                    totalAttemptsToday);
             throw new RuntimeException(
                     "Daily KYC attempt limit reached ("
                             + tenant.getMaxDailyAttempts()
@@ -85,6 +89,8 @@ public class KycRequestServiceImpl implements KycRequestService {
                         request.getId(),
                         "Re-submitted KYC request for " + documentType,
                         getCurrentUser());
+                log.info("KYC request re-submitted: requestId={}, userId={}, docType={}", request.getId(), userId,
+                        documentType);
                 return request;
             }
         }
@@ -104,6 +110,8 @@ public class KycRequestServiceImpl implements KycRequestService {
                     saved.getId(),
                     "Submitted new KYC request for " + documentType,
                     getCurrentUser());
+            log.info("New KYC request created: requestId={}, userId={}, docType={}, tenantId={}", saved.getId(), userId,
+                    documentType, tenantId);
             return saved;
         } catch (DataIntegrityViolationException ex) {
             throw new IllegalStateException(
@@ -114,10 +122,15 @@ public class KycRequestServiceImpl implements KycRequestService {
     @Override
     @Transactional
     public void updateStatus(Long requestId, KycStatus status) {
-        repository.updateStatus(requestId, status.name());
+        int updatedRows = repository.updateStatus(requestId, status.name());
+
+        if (updatedRows == 0) {
+            throw new RuntimeException("KYC request not found with id: " + requestId);
+        }
 
         auditLogService.logAction("UPDATE_STATUS", "KycRequest", requestId,
                 "Updated status to " + status, getCurrentUser());
+        log.info("KYC status updated: requestId={}, newStatus={}", requestId, status);
     }
 
     @Override

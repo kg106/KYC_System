@@ -6,6 +6,7 @@ import com.example.kyc_system.entity.KycExtractedData;
 import com.example.kyc_system.repository.KycDocumentRepository;
 import com.example.kyc_system.repository.KycExtractedDataRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -17,6 +18,7 @@ import java.time.LocalDateTime;
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class KycExtractionServiceImpl implements KycExtractionService {
 
     private final KycExtractedDataRepository repository;
@@ -36,7 +38,9 @@ public class KycExtractionServiceImpl implements KycExtractionService {
                 .createdAt(LocalDateTime.now())
                 .build();
 
-        return repository.save(data);
+        KycExtractedData saved = repository.save(data);
+        log.info("Persisted extracted data: docId={}, resultId={}", documentId, saved.getId());
+        return saved;
     }
 
     /**
@@ -50,7 +54,7 @@ public class KycExtractionServiceImpl implements KycExtractionService {
         try {
             return LocalDate.parse(dateStr);
         } catch (Exception e) {
-            System.err.println("Failed to parse extracted DOB: " + dateStr + ". Error: " + e.getMessage());
+            log.error("Failed to parse extracted DOB: {}. Error: {}", dateStr, e.getMessage());
             return null;
         }
     }

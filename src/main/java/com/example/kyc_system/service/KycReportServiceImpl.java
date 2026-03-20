@@ -31,6 +31,7 @@ public class KycReportServiceImpl implements KycReportService {
 
         @Override
         public KycMonthlyReportDTO generateMonthlyReport(LocalDate dateFrom, LocalDate dateTo) {
+                log.info("Generating monthly report: from={} to={}", dateFrom, dateTo);
                 LocalDateTime from = dateFrom.atStartOfDay();
                 LocalDateTime to = dateTo.atTime(23, 59, 59);
 
@@ -57,6 +58,9 @@ public class KycReportServiceImpl implements KycReportService {
                 long totalUsers = userRepository.count();
 
                 List<KycReportDataDTO> reportData = requestService.getReportData(dateFrom, dateTo);
+
+                log.info("Monthly report generated: totalRequests={}, passRate={}%", total,
+                                String.format("%.2f", passRate));
 
                 return KycMonthlyReportDTO.builder()
                                 .dateFrom(dateFrom)

@@ -3,6 +3,7 @@ package com.example.kyc_system.service.impl;
 import com.example.kyc_system.security.JwtTokenProvider;
 import com.example.kyc_system.service.TokenBlacklistService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -11,6 +12,7 @@ import java.time.Duration;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class TokenBlacklistServiceImpl implements TokenBlacklistService {
 
     private final StringRedisTemplate redisTemplate;
@@ -28,6 +30,7 @@ public class TokenBlacklistServiceImpl implements TokenBlacklistService {
             long expirationRemainingMs = jwtTokenProvider.getExpirationRemaining(token);
             if (expirationRemainingMs > 0) {
                 String redisKey = BLACKLIST_PREFIX + token;
+                log.info("Blacklisting token for {} ms", expirationRemainingMs);
                 // Store the token in Valkey/Redis with a TTL corresponding to its remaining
                 // validity
                 redisTemplate.opsForValue().set(redisKey, "revoked", Duration.ofMillis(expirationRemainingMs));

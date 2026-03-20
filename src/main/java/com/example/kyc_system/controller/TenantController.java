@@ -5,6 +5,7 @@ import com.example.kyc_system.service.TenantService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -25,6 +26,7 @@ import java.util.Map;
 @RequestMapping("/api/tenants")
 @PreAuthorize("hasRole('SUPER_ADMIN')")
 @RequiredArgsConstructor
+@Slf4j
 @Tag(name = "Super Admin - Tenant Management", description = "Endpoints for superadmin to manage tenants")
 public class TenantController {
 
@@ -38,9 +40,11 @@ public class TenantController {
     @Operation(summary = "Create new tenant", description = "Creates a new tenant and optionally provisions a tenant admin user")
     public ResponseEntity<TenantDTO> createTenant(
             @Valid @RequestBody TenantCreateDTO dto) {
+        log.info("Creating tenant: tenantId={}", dto.getTenantId());
+        TenantDTO created = tenantService.createTenant(dto);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(tenantService.createTenant(dto));
+                .body(created);
     }
 
     @GetMapping
@@ -65,6 +69,7 @@ public class TenantController {
     public ResponseEntity<TenantDTO> updateTenant(
             @PathVariable String tenantId,
             @Valid @RequestBody TenantUpdateDTO dto) {
+        log.info("Updating tenant: tenantId={}", tenantId);
         return ResponseEntity.ok(tenantService.updateTenant(tenantId, dto));
     }
 
@@ -76,6 +81,7 @@ public class TenantController {
     @Operation(summary = "Deactivate tenant", description = "Blocks all users of this tenant immediately")
     public ResponseEntity<String> deactivate(
             @PathVariable String tenantId) {
+        log.info("Deactivating tenant: tenantId={}", tenantId);
         boolean changed = tenantService.setActive(tenantId, false);
         String message = changed ? "Tenant deactivated: " + tenantId : "Tenant is already inactive: " + tenantId;
         return ResponseEntity.ok(message);
@@ -85,6 +91,7 @@ public class TenantController {
     @Operation(summary = "Activate tenant", description = "Re-enables a previously deactivated tenant")
     public ResponseEntity<String> activate(
             @PathVariable String tenantId) {
+        log.info("Activating tenant: tenantId={}", tenantId);
         boolean changed = tenantService.setActive(tenantId, true);
         String message = changed ? "Tenant activated: " + tenantId : "Tenant is already active: " + tenantId;
         return ResponseEntity.ok(message);
@@ -95,6 +102,7 @@ public class TenantController {
     @Operation(summary = "Rotate API key", description = "Generates a new API key, invalidating the old one")
     public ResponseEntity<Map<String, String>> rotateApiKey(
             @PathVariable String tenantId) {
+        log.info("Rotating API key for tenant: tenantId={}", tenantId);
         String newKey = tenantService.rotateApiKey(tenantId);
         return ResponseEntity.ok(Map.of("apiKey", newKey));
     }

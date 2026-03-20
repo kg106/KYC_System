@@ -5,6 +5,7 @@ import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * JPA AttributeConverter that automatically encrypts/decrypts sensitive string
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Component;
  */
 @Component
 @Converter
+@Slf4j
 public class KycEncryptionConverter implements AttributeConverter<String, String> {
 
     private final EncryptionUtil encryptionUtil;
@@ -32,6 +34,7 @@ public class KycEncryptionConverter implements AttributeConverter<String, String
         if (attribute == null || attribute.isEmpty()) {
             return attribute;
         }
+        log.trace("Encrypting attribute value");
         return encryptionUtil.encrypt(attribute);
     }
 
@@ -47,6 +50,7 @@ public class KycEncryptionConverter implements AttributeConverter<String, String
         try {
             return encryptionUtil.decrypt(dbData);
         } catch (Exception e) {
+            log.trace("Decryption failed, returning raw value (likely legacy plain text)");
             // Fallback for existing plain text data or decryption errors
             return dbData;
         }

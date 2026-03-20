@@ -6,6 +6,7 @@ import com.example.kyc_system.dto.UserDTO;
 import com.example.kyc_system.service.UserService;
 import com.example.kyc_system.service.PasswordResetService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -28,6 +29,7 @@ import org.springframework.util.*;
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
+@Slf4j
 @Tag(name = "Authentication", description = "Endpoints for user registration and login")
 public class AuthController {
 
@@ -52,6 +54,7 @@ public class AuthController {
         jwtAuthResponse.setAccessToken(token);
         jwtAuthResponse.setRefreshToken(refreshToken);
 
+        log.info("User logged in: {}", loginDTO.getEmail());
         return ResponseEntity.ok(jwtAuthResponse);
     }
 
@@ -60,6 +63,7 @@ public class AuthController {
     @Operation(summary = "User Registration", description = "Creates a new user account")
     public ResponseEntity<UserDTO> register(@Valid @RequestBody UserDTO userDTO) {
         UserDTO savedUser = userService.createUser(userDTO);
+        log.info("User registered: email={}", savedUser.getEmail());
         return new ResponseEntity<>(savedUser, HttpStatus.CREATED);
     }
 
@@ -84,13 +88,16 @@ public class AuthController {
     public ResponseEntity<JwtAuthResponse> refresh(
             @CookieValue(name = "refreshToken", required = false) String refreshToken, HttpServletResponse response) {
         if (refreshToken == null) {
+            log.warn("Token refresh attempt with no refresh token cookie");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
         try {
             JwtAuthResponse authResponse = refreshTokenService.processRefreshToken(refreshToken);
             response.addCookie(cookieUtil.createRefreshTokenCookie(authResponse.getRefreshToken()));
+            log.debug("Token refreshed successfully");
             return ResponseEntity.ok(authResponse);
         } catch (RuntimeException e) {
+            log.warn("Token refresh failed: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
     }
@@ -117,6 +124,7 @@ public class AuthController {
             }
         }
         response.addCookie(cookieUtil.createEmptyCookie());
+        log.info("User logged out");
         return ResponseEntity.ok("Logged out successfully");
     }
 }

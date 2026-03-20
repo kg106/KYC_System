@@ -5,12 +5,14 @@ import com.example.kyc_system.enums.KycStatus;
 import com.example.kyc_system.repository.KycRequestRepository;
 import com.example.kyc_system.repository.KycVerificationResultRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class KycVerificationServiceImpl implements KycVerificationService {
 
         private final KycVerificationResultRepository repository;
@@ -60,7 +62,11 @@ public class KycVerificationServiceImpl implements KycVerificationService {
                                 .decisionReason(reason.toString().trim())
                                 .build();
 
-                return repository.save(result);
+                KycVerificationResult saved = repository.save(result);
+                log.info("KYC verification complete: requestId={}, finalStatus={}, nameScore={}%, dobMatch={}, docMatch={}",
+                                requestId, saved.getFinalStatus(), String.format("%.1f", nameScore * 100), dobMatch,
+                                docMatch);
+                return saved;
         }
 
         private String normalize(String s) {

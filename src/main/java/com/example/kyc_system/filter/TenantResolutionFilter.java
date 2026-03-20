@@ -14,6 +14,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.util.List;
@@ -36,6 +37,7 @@ import java.util.Map;
 @Component
 @Order(3) // Runs after JwtAuthenticationFilter
 @RequiredArgsConstructor
+@Slf4j
 public class TenantResolutionFilter extends OncePerRequestFilter {
 
     private final TenantRepository tenantRepository;
@@ -68,6 +70,7 @@ public class TenantResolutionFilter extends OncePerRequestFilter {
 
             // Superadmin bypasses tenant scoping — they can see all tenants' data
             if (auth != null && hasRole(auth, "ROLE_SUPER_ADMIN")) {
+                log.debug("Super admin detected. Bypassing tenant resolution.");
                 TenantContext.setTenant(TenantContext.SUPER_ADMIN_TENANT);
                 MDC.put(MDC_TENANT_KEY, TenantContext.SUPER_ADMIN_TENANT); // ← MDC
                 chain.doFilter(request, response);
@@ -78,14 +81,17 @@ public class TenantResolutionFilter extends OncePerRequestFilter {
             String tenantId = resolveTenantId(request, auth);
 
             if (tenantId == null || tenantId.isBlank()) {
+                log.warn("Tenant ID could not be resolved for request to {}. Sending 400.", request.getRequestURI());
                 sendError(response, "X-Tenant-ID header is required");
                 return;
             }
+            log.debug("Resolved tenant ID: {}", tenantId);
 
             // Validate tenant exists and is active in the database
             Tenant tenant = tenantRepository.findByTenantId(tenantId).orElse(null);
 
             if (tenant == null) {
+                log.warn("Tenant not found for ID: {}. Sending 400.", tenantId);
                 sendError(response, "Tenant not found: " + tenantId);
                 return;
             }

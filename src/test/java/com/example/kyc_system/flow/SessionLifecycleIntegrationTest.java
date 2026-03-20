@@ -229,7 +229,7 @@ public class SessionLifecycleIntegrationTest extends BaseIntegrationTest {
                                 .delete("/api/users/" + userId)
                                 .header("Authorization", "Bearer " + userToken)
                                 .header("X-Tenant-ID", "default"))
-                                .andExpect(status().isUnauthorized());
+                                .andExpect(status().isForbidden());
 
                 // GET /api/users (list all) requires ROLE_ADMIN — regular user gets 403
                 mockMvc.perform(get("/api/users")

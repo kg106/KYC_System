@@ -1,6 +1,7 @@
 package com.example.kyc_system.queue;
 
 import org.springframework.stereotype.Service;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -12,6 +13,7 @@ import java.util.concurrent.LinkedBlockingQueue;
  * KycWorker threads poll from this queue to process requests.
  */
 @Service
+@Slf4j
 public class KycQueueService {
 
     /**
@@ -22,6 +24,7 @@ public class KycQueueService {
 
     /** Adds a KYC request ID to the queue (non-blocking). */
     public void push(Long requestId) {
+        log.info("Pushing request to queue: requestId={}", requestId);
         queue.offer(requestId);
     }
 
@@ -30,7 +33,9 @@ public class KycQueueService {
      * threads.
      */
     public Long poll() throws InterruptedException {
-        return queue.take();
+        Long requestId = queue.take();
+        log.info("Polled request from queue: requestId={}, remainingSize={}", requestId, queue.size());
+        return requestId;
     }
 
     public int size() {

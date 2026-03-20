@@ -10,6 +10,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.util.UUID;
@@ -36,6 +37,7 @@ import java.util.UUID;
  */
 @Component
 @Order(1)
+@Slf4j
 public class MdcLoggingFilter extends OncePerRequestFilter {
 
     private static final String REQUEST_ID_KEY = "requestId";
@@ -65,6 +67,8 @@ public class MdcLoggingFilter extends OncePerRequestFilter {
             // 4. Tenant from TenantContext (set later by TenantResolutionFilter,
             // but we add a placeholder so the key always exists in JSON)
             MDC.put(TENANT_ID_KEY, "resolving");
+
+            log.debug("MDC context initialized for request: {}", request.getRequestURI());
 
             filterChain.doFilter(request, response);
 

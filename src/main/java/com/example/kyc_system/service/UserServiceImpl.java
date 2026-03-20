@@ -14,6 +14,7 @@ import com.example.kyc_system.repository.KycRequestRepository;
 import com.example.kyc_system.security.JwtTokenProvider;
 import com.example.kyc_system.util.PasswordUtil;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
@@ -33,6 +34,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
@@ -121,6 +123,7 @@ public class UserServiceImpl implements UserService {
             userRoleRepository.save(UserRole.builder().user(savedUser).role(role).build());
         });
 
+        log.info("User created: id={}, email={}, tenantId={}", savedUser.getId(), savedUser.getEmail(), tenantId);
         return mapToDTO(savedUser);
     }
 
@@ -142,6 +145,7 @@ public class UserServiceImpl implements UserService {
         if (userDTO.getIsActive() != null)
             user.setIsActive(userDTO.getIsActive());
 
+        log.info("User updated: id={}", id);
         return mapToDTO(userRepository.save(user));
     }
 
@@ -156,6 +160,7 @@ public class UserServiceImpl implements UserService {
                 .forEach(request -> request.getKycDocuments().forEach(kycDocumentService::deleteDocument));
 
         userRepository.deleteById(id);
+        log.info("User deleted: id={}, tenantId={}", id, tenantId);
     }
 
     @Override
@@ -163,18 +168,22 @@ public class UserServiceImpl implements UserService {
         // This will throw DisabledException automatically (from Fix 1)
         // if the account is inactive — but we add an explicit check
         // BEFORE authenticate() to return a cleaner error message.
-//        User user = userRepository.findByEmail(loginDTO.getEmail()).orElseThrow(() -> new RuntimeException("User not found"));
-        User user = userRepository.findByEmail(loginDTO.getEmail()).orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
+        // User user = userRepository.findByEmail(loginDTO.getEmail()).orElseThrow(() ->
+        // new RuntimeException("User not found"));
+        User user = userRepository.findByEmail(loginDTO.getEmail())
+                .orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
 
         if (!user.getIsActive()) {
             throw new DisabledException("Account is deactivated. Please contact support.");
         }
 
-        Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(loginDTO.getEmail(), loginDTO.getPassword()));
+        Authentication authentication = authenticationManager
+                .authenticate(new UsernamePasswordAuthenticationToken(loginDTO.getEmail(), loginDTO.getPassword()));
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
         // Use tenant-aware token generation
+        log.info("Login successful: email={}, tenantId={}", loginDTO.getEmail(), user.getTenantId());
         return jwtTokenProvider.generateToken(authentication, user.getTenantId());
     }
 

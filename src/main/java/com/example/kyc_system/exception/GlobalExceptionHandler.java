@@ -2,6 +2,7 @@ package com.example.kyc_system.exception;
 
 import com.example.kyc_system.dto.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -31,6 +32,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
  * 5. General exceptions (500)
  */
 @RestControllerAdvice(basePackages = "com.example.kyc_system.controller")
+@Slf4j
 public class GlobalExceptionHandler {
 
         /**
@@ -61,6 +63,7 @@ public class GlobalExceptionHandler {
                                 .path(request.getRequestURI())
                                 .build();
 
+                log.warn("Validation error on {}: {}", request.getRequestURI(), combinedMessage);
                 return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
         }
 
@@ -74,6 +77,7 @@ public class GlobalExceptionHandler {
                                 .message("Invalid email or password")
                                 .path(request.getRequestURI())
                                 .build();
+                log.warn("Disabled account login attempt on {}", request.getRequestURI());
                 return new ResponseEntity<>(errorResponse, HttpStatus.UNAUTHORIZED);
         }
 
@@ -90,6 +94,7 @@ public class GlobalExceptionHandler {
                                 .path(request.getRequestURI())
                                 .build();
 
+                log.warn("Access denied on {}: {}", request.getRequestURI(), ex.getMessage());
                 return new ResponseEntity<>(errorResponse, HttpStatus.FORBIDDEN);
         }
 
@@ -103,6 +108,7 @@ public class GlobalExceptionHandler {
                                 .message(ex.getMessage())
                                 .path(request.getRequestURI())
                                 .build();
+                log.warn("Illegal state on {}: {}", request.getRequestURI(), ex.getMessage());
                 return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
         }
 
@@ -121,6 +127,7 @@ public class GlobalExceptionHandler {
                                 .path(request.getRequestURI())
                                 .build();
 
+                log.warn("Business rule violation on {}: {}", request.getRequestURI(), ex.getMessage());
                 return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT);
         }
 
@@ -142,6 +149,7 @@ public class GlobalExceptionHandler {
                                 .path(request.getRequestURI())
                                 .build();
 
+                log.warn("Authentication failure on {}: {}", request.getRequestURI(), ex.getMessage());
                 return new ResponseEntity<>(errorResponse, HttpStatus.UNAUTHORIZED);
         }
 
@@ -164,6 +172,7 @@ public class GlobalExceptionHandler {
                                 .path(request.getRequestURI())
                                 .build();
 
+                log.warn("Type mismatch on {}: {}", request.getRequestURI(), message);
                 return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
         }
 
@@ -187,6 +196,7 @@ public class GlobalExceptionHandler {
                                 .path(request.getRequestURI())
                                 .build();
 
+                log.error("Runtime exception on {}: {}", request.getRequestURI(), ex.getMessage(), ex);
                 return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
@@ -205,6 +215,7 @@ public class GlobalExceptionHandler {
                                 .path(request.getRequestURI())
                                 .build();
 
+                log.error("Unexpected exception on {}: {}", request.getRequestURI(), ex.getMessage(), ex);
                 return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
         }
 }

@@ -216,12 +216,15 @@ class KycRequestServiceImplTest {
         @Test
         @DisplayName("Should update status and write audit log")
         void updateStatus_ExistingRequest_UpdatesStatus() {
-            KycRequest req = KycRequest.builder().id(10L).status(KycStatus.SUBMITTED.name()).build();
-            when(repository.findById(10L)).thenReturn(Optional.of(req));
+            // Mock repository to return 1 row updated
+            when(repository.updateStatus(10L, KycStatus.VERIFIED.name())).thenReturn(1);
 
             requestService.updateStatus(10L, KycStatus.VERIFIED);
 
-            assertEquals(KycStatus.VERIFIED.name(), req.getStatus());
+            // Verify the repository update query was called
+            verify(repository).updateStatus(10L, KycStatus.VERIFIED.name());
+
+            // Verify audit log
             verify(auditLogService).logAction(eq("UPDATE_STATUS"), eq("KycRequest"),
                     eq(10L), anyString(), anyString());
         }
@@ -229,12 +232,13 @@ class KycRequestServiceImplTest {
         @Test
         @DisplayName("Should throw RuntimeException when request not found")
         void updateStatus_NotFound_ThrowsException() {
-            when(repository.findById(99L)).thenReturn(Optional.empty());
+            // Mock repository to return 0 rows updated
+            when(repository.updateStatus(99L, KycStatus.VERIFIED.name())).thenReturn(0);
 
             RuntimeException ex = assertThrows(RuntimeException.class,
                     () -> requestService.updateStatus(99L, KycStatus.VERIFIED));
 
-            assertTrue(ex.getMessage().contains("KYC request not found"));
+            assertTrue(ex.getMessage().contains("not found"));
         }
     }
 

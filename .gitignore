@@ -36,6 +36,7 @@ build/
 uploads/
 logs/
 *.log
+*.log.gz
 src/main/resources/application-dev.properties
 src/main/resources/application-docker.properties
 application.properties*.sql
@@ -43,3 +44,9 @@ application.properties*.sql
 *.sql
 
 .env
+
+# Monitoring runtime data
+loki-data/
+prometheus-data/
+grafana-data/
+promtail/positions.yaml

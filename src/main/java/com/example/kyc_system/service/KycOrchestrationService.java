@@ -46,9 +46,12 @@ public class KycOrchestrationService {
                 KycRequest request = requestService.createOrReuse(userId, documentType.name());
 
                 // 2. Save File (I/O)
+                log.info("Saving KYC document: userId={}, requestId={}, docType={}", userId, request.getId(),
+                                documentType);
                 documentService.save(request.getId(), documentType, file, documentNumber);
 
                 // 3. Push to Queue
+                log.info("Queueing KYC request for async processing: requestId={}", request.getId());
                 queueService.push(request.getId());
 
                 return request.getId();
@@ -60,9 +63,11 @@ public class KycOrchestrationService {
                                 KycStatus.PROCESSING.name(), KycStatus.SUBMITTED.name()));
 
                 if (rows == 0) {
+                        log.debug("Request {} already processing or finished, skipping", requestId);
                         return; // Already processed
                 }
 
+                log.info("Async processing started for request: {}", requestId);
                 // 2. Retrieve Data - Short Transaction
                 // We fetch necessary data to perform OCR outside the transaction
                 var processingData = transactionTemplate.execute(status -> {
@@ -106,6 +111,7 @@ public class KycOrchestrationService {
                                 KycRequest request = kycRequestRepository.findById(requestId).orElseThrow();
                                 request.setFailureReason("Processing error: " + t.getMessage());
                                 requestService.updateStatus(request.getId(), KycStatus.FAILED);
+                                log.warn("Request {} marked as FAILED due to processing error", requestId);
                                 return null;
                         });
                 }

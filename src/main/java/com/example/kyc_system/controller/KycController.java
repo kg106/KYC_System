@@ -6,6 +6,7 @@ import com.example.kyc_system.service.KycOrchestrationService;
 import com.example.kyc_system.service.KycRequestService;
 //import com.example.kyc_system.service.UserService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -32,6 +33,7 @@ import io.swagger.v3.oas.annotations.tags.*;
 @RestController
 @RequestMapping("/api/kyc")
 @RequiredArgsConstructor
+@Slf4j
 @Tag(name = "KYC Operations", description = "Endpoints for KYC document upload and status verification")
 public class KycController {
 
@@ -49,10 +51,14 @@ public class KycController {
             @Parameter(description = "KYC Document File", required = true) @RequestParam("file") MultipartFile file,
             @Parameter(description = "Document Number", required = true) @RequestParam("documentNumber") String documentNumber) {
         try {
+            log.info("KYC upload: userId={}, docType={}, fileName={}", userId, documentType,
+                    file.getOriginalFilename());
             Long requestId = orchestrationService.submitKyc(userId, documentType, file, documentNumber);
+            log.info("KYC upload successful: userId={}, requestId={}", userId, requestId);
             return ResponseEntity.accepted()
                     .body(Map.of("message", "KYC request submitted successfully", "requestId", requestId));
         } catch (Exception e) {
+            log.warn("KYC upload failed: userId={}, error={}", userId, e.getMessage());
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
@@ -61,6 +67,7 @@ public class KycController {
     @PreAuthorize("@securityService.canAccessUser(#userId)")
     @Operation(summary = "Get KYC Status", description = "Retrieves the latest KYC request status for a specific user")
     public ResponseEntity<?> getKycStatus(@PathVariable Long userId) {
+        log.debug("KYC status lookup: userId={}", userId);
         return requestService.getLatestByUser(userId).map(request -> ResponseEntity.ok(formatKycResponse(request)))
                 .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(Map.of("message", "No KYC request found for this user")));
@@ -103,6 +110,7 @@ public class KycController {
                 .dateTo(dateTo)
                 .build();
 
+        log.info("KYC search: userId={}, status={}, docType={}", userId, status, documentType);
         Page<KycRequest> requests = requestService.searchKycRequests(searchDTO, pageable);
         Page<Map<String, Object>> response = requests.map(this::formatKycResponse);
         return ResponseEntity.ok(response);
@@ -161,6 +169,7 @@ public class KycController {
             dt = lastMonth.atEndOfMonth();
         }
 
+        log.info("KYC report triggered: from={}, to={}", df, dt);
         reportScheduler.triggerManually(df, dt);
         return ResponseEntity.ok("Report triggered for range: " + df + " to " + dt);
     }

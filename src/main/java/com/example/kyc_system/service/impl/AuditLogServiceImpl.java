@@ -61,6 +61,7 @@ public class AuditLogServiceImpl implements AuditLogService {
                 .tenantId(tenantId)
                 .build();
 
+        log.trace("Saving audit log: action={}, entityType={}, entityId={}", action, entityType, entityId);
         auditLogRepository.save(auditLog);
     }
 

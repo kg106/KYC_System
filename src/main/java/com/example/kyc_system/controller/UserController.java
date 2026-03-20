@@ -2,6 +2,7 @@ package com.example.kyc_system.controller;
 
 import com.example.kyc_system.dto.UserDTO;
 import com.example.kyc_system.service.UserService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -29,6 +30,7 @@ import org.springdoc.core.annotations.*;
  */
 @RestController
 @RequestMapping("/api/users")
+@Slf4j
 @Tag(name = "User Management", description = "Endpoints for managing user profiles (Admin and Self-service)")
 public class UserController {
 
@@ -62,6 +64,7 @@ public class UserController {
     @Operation(summary = "Update User Profile", description = "Performs a partial update of a user's profile. Available to self or ADMIN.")
     public ResponseEntity<UserDTO> updateUser(@PathVariable("userId") Long userId,
             @Valid @RequestBody UserUpdateDTO updatedUser) {
+        log.info("User profile update: userId={}", userId);
         UserDTO userDto = userService.updateUser(userId, updatedUser);
         return new ResponseEntity<>(userDto, HttpStatus.OK);
     }
@@ -74,6 +77,7 @@ public class UserController {
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Delete User", description = "Permanently deletes a user from the system. Restricted to ADMIN.")
     public ResponseEntity<String> deleteUser(@PathVariable("userId") Long userId) {
+        log.info("User deletion: userId={}", userId);
         userService.deleteUser(userId);
         return ResponseEntity.ok("User deleted successfully");
     }
