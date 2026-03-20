@@ -93,9 +93,11 @@
     <springProfile name="dev,local,default">
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="ASYNC_JSON_FILE"/>
         </root>
         <logger name="com.example.kyc_system" level="DEBUG" additivity="false">
             <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="ASYNC_JSON_FILE"/>
         </logger>
     </springProfile>
 

@@ -11,3 +11,7 @@ scrape_configs:
       - source_labels: [__address__]
         target_label: instance
         replacement: 'kyc-app'
+
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres-exporter:9187']

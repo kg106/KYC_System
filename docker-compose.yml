@@ -72,7 +72,7 @@ services:
 
     volumes:
       - kyc_uploads:/app/uploads
-      - kyc_logs:/app/logs        # shared with Promtail below
+      - ./logs:/app/logs        # shared with Promtail below
 
   # ════════════════════════════════════════════════════════════════════════════
   # PROMETHEUS — metrics collection
@@ -93,6 +93,21 @@ services:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.retention.time=15d'
       - '--web.enable-lifecycle'
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # POSTGRES EXPORTER — Collects PostgreSQL metrics
+  # ════════════════════════════════════════════════════════════════════════════
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    container_name: kyc_postgres_exporter
+    restart: unless-stopped
+    environment:
+      # Connects using the same credentials as your dev database
+      DATA_SOURCE_NAME: "postgresql://test_user:system@host.docker.internal:5433/kyc_db_copy?sslmode=disable"
+    ports:
+      - "9187:9187"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   # ════════════════════════════════════════════════════════════════════════════
   # LOKI — log aggregation and storage
@@ -127,7 +142,7 @@ services:
     restart: unless-stopped
     volumes:
       - ./promtail/promtail.yml:/etc/promtail/promtail.yml:ro
-      - kyc_logs:/var/log/kyc-app:ro   # read-only access to the app logs
+      - ./logs:/var/log/kyc-app:ro   # read-only access to the app logs
       - /var/run/docker.sock:/var/run/docker.sock:ro
     command: -config.file=/etc/promtail/promtail.yml
     depends_on:
@@ -161,8 +176,6 @@ services:
 # ══════════════════════════════════════════════════════════════════════════════
 volumes:
   kyc_uploads:
-    driver: local
-  kyc_logs:
     driver: local
   prometheus_data:
     driver: local
