@@ -13,16 +13,59 @@ import java.util.Optional;
 import java.time.LocalDate;
 import java.util.*;
 
+/**
+ * Service interface for KYC Request lifecycle management.
+ * Handles creation, status updates, and reporting for KYC transactions.
+ */
 public interface KycRequestService {
+    /**
+     * Creates a new KYC request or reuses an existing one if it's in a terminable state.
+     *
+     * @param userId user ID
+     * @param documentType type of document
+     * @return the KycRequest entity
+     */
     KycRequest createOrReuse(Long userId, String documentType);
 
+    /**
+     * Updates the status of a KYC request.
+     *
+     * @param requestId request ID
+     * @param status new status
+     */
     void updateStatus(Long requestId, KycStatus status);
 
+    /**
+     * Gets the most recent KYC request for a user.
+     *
+     * @param userId user ID
+     * @return optional KycRequest
+     */
     Optional<KycRequest> getLatestByUser(Long userId);
 
+    /**
+     * Retrieves all KYC requests for a user.
+     *
+     * @param userId user ID
+     * @return list of KycRequests
+     */
     List<KycRequest> getAllByUser(Long userId);
 
+    /**
+     * Searches KYC requests with filters and pagination.
+     *
+     * @param searchDTO filters
+     * @param pageable pagination
+     * @return paged KycRequests
+     */
     Page<KycRequest> searchKycRequests(KycRequestSearchDTO searchDTO, Pageable pageable);
 
-    List<KycReportDataDTO> getReportData(LocalDate dateFrom, LocalDate dateTo);
+    /**
+     * Extracts reporting data for a specific date range.
+     *
+     * @param dateFrom start date
+     * @param dateTo end date
+     * @return list of report data rows
+     */
+    List<KycReportDataDTO> getReportData(LocalDate dateFrom, LocalDate dateTo, String tenantId);
 }

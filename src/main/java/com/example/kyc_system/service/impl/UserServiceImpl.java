@@ -1,4 +1,4 @@
-package com.example.kyc_system.service;
+package com.example.kyc_system.service.impl;
 
 import com.example.kyc_system.context.TenantContext;
 import com.example.kyc_system.dto.LoginDTO;
@@ -12,6 +12,8 @@ import com.example.kyc_system.repository.UserRepository;
 import com.example.kyc_system.repository.UserRoleRepository;
 import com.example.kyc_system.repository.KycRequestRepository;
 import com.example.kyc_system.security.JwtTokenProvider;
+import com.example.kyc_system.service.KycDocumentService;
+import com.example.kyc_system.service.UserService;
 import com.example.kyc_system.util.PasswordUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,6 +34,11 @@ import com.example.kyc_system.repository.specification.UserSpecification;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Implementation of UserService.
+ * Handles user business logic with strict multi-tenant isolation.
+ * Integrated with Spring Security for authentication and JWT generation.
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -45,6 +52,10 @@ public class UserServiceImpl implements UserService {
     private final KycRequestRepository kycRequestRepository;
     private final KycDocumentService kycDocumentService;
 
+    /**
+     * Retrieves an active user, respecting the current tenant context.
+     * Super admins can bypass tenant-id filtering.
+     */
     @Override
     public User getActiveUser(Long userId) {
         if (TenantContext.isSuperAdmin()) {
@@ -56,6 +67,9 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
     }
 
+    /**
+     * Lists users within the current tenant scope.
+     */
     @Override
     public List<UserDTO> getAllUsers() {
         if (TenantContext.isSuperAdmin()) {
@@ -65,6 +79,9 @@ public class UserServiceImpl implements UserService {
         return userRepository.findByTenantId(tenantId).stream().map(this::mapToDTO).collect(Collectors.toList());
     }
 
+    /**
+     * Gets user profile by ID with tenant isolation.
+     */
     @Override
     public UserDTO getUserById(Long id) {
         if (TenantContext.isSuperAdmin()) {
@@ -78,6 +95,9 @@ public class UserServiceImpl implements UserService {
         return mapToDTO(user);
     }
 
+    /**
+     * Gets user profile by email with tenant isolation.
+     */
     @Override
     public UserDTO getUserByEmail(String email) {
         if (TenantContext.isSuperAdmin()) {
@@ -91,6 +111,9 @@ public class UserServiceImpl implements UserService {
         return mapToDTO(user);
     }
 
+    /**
+     * Direct email lookup across all tenants (internal use).
+     */
     @Override
     public UserDTO getUserByEmailDirect(String email) {
         User user = userRepository.findByEmail(email)
@@ -98,6 +121,10 @@ public class UserServiceImpl implements UserService {
         return mapToDTO(user);
     }
 
+    /**
+     * Registers a new user and assigns the default ROLE_USER.
+     * Passwords are hashed before storage.
+     */
     @Override
     @Transactional
     public UserDTO createUser(UserDTO userDTO) {
@@ -127,6 +154,9 @@ public class UserServiceImpl implements UserService {
         return mapToDTO(savedUser);
     }
 
+    /**
+     * Partially updates a user profile.
+     */
     @Override
     @Transactional
     public UserDTO updateUser(Long id, UserUpdateDTO userDTO) {
@@ -149,6 +179,9 @@ public class UserServiceImpl implements UserService {
         return mapToDTO(userRepository.save(user));
     }
 
+    /**
+     * Deletes a user and triggers cleanup of their physical documents.
+     */
     @Override
     @Transactional
     public void deleteUser(Long id) {
@@ -163,13 +196,14 @@ public class UserServiceImpl implements UserService {
         log.info("User deleted: id={}, tenantId={}", id, tenantId);
     }
 
+    /**
+     * Handles user login with status checks and multi-tenant token generation.
+     */
     @Override
     public String login(LoginDTO loginDTO) {
         // This will throw DisabledException automatically (from Fix 1)
         // if the account is inactive — but we add an explicit check
         // BEFORE authenticate() to return a cleaner error message.
-        // User user = userRepository.findByEmail(loginDTO.getEmail()).orElseThrow(() ->
-        // new RuntimeException("User not found"));
         User user = userRepository.findByEmail(loginDTO.getEmail())
                 .orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
 
@@ -182,11 +216,13 @@ public class UserServiceImpl implements UserService {
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        // Use tenant-aware token generation
         log.info("Login successful: email={}, tenantId={}", loginDTO.getEmail(), user.getTenantId());
         return jwtTokenProvider.generateToken(authentication, user.getTenantId());
     }
 
+    /**
+     * Advanced user search using JPA Specifications.
+     */
     @Override
     @Transactional(readOnly = true)
     public Page<UserDTO> searchUsers(UserSearchDTO searchDTO, Pageable pageable) {
@@ -196,6 +232,7 @@ public class UserServiceImpl implements UserService {
                 .map(this::mapToDTO);
     }
 
+    /** Internal mapper from entity to DTO. */
     private UserDTO mapToDTO(User user) {
         return UserDTO.builder()
                 .id(user.getId())
@@ -205,7 +242,6 @@ public class UserServiceImpl implements UserService {
                 .isActive(user.getIsActive())
                 .dob(user.getDob())
                 .tenantId(user.getTenantId())
-                // Password is not returned
                 .build();
     }
 }

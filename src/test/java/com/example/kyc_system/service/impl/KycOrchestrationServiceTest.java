@@ -1,4 +1,4 @@
-package com.example.kyc_system.service;
+package com.example.kyc_system.service.impl;
 
 import com.example.kyc_system.dto.OcrResult;
 import com.example.kyc_system.entity.*;
@@ -6,6 +6,7 @@ import com.example.kyc_system.enums.DocumentType;
 import com.example.kyc_system.enums.KycStatus;
 import com.example.kyc_system.queue.KycQueueService;
 import com.example.kyc_system.repository.KycRequestRepository;
+import com.example.kyc_system.service.*;
 import com.example.kyc_system.util.KycFileValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -176,7 +177,7 @@ class KycOrchestrationServiceTest {
          * Helper: Make transactionTemplate.execute() immediately run the callback.
          * For the CAS call, return the provided rowCount.
          */
-        @SuppressWarnings("unchecked")
+        @SuppressWarnings({ "unchecked", "unused" })
         private void stubCas(int rowCount) {
             when(transactionTemplate.execute(any(TransactionCallback.class)))
                     .thenReturn(rowCount) // first call = CAS
@@ -190,6 +191,7 @@ class KycOrchestrationServiceTest {
                     });
         }
 
+        @SuppressWarnings("unchecked")
         @Test
         @DisplayName("CAS returns 0 (already PROCESSING) → should exit early, OCR never called")
         void processAsync_CasReturnsZero_ExitsEarly() {
@@ -202,6 +204,7 @@ class KycOrchestrationServiceTest {
             verifyNoInteractions(verificationService);
         }
 
+        @SuppressWarnings("unchecked")
         @Test
         @DisplayName("CAS succeeds → OCR runs → extraction and verification called → status updated")
         void processAsync_CasSucceeds_RunsFullPipeline() throws Exception {
@@ -248,6 +251,7 @@ class KycOrchestrationServiceTest {
             assertDoesNotThrow(() -> orchestrationService.processAsync(100L));
         }
 
+        @SuppressWarnings("unchecked")
         @Test
         @DisplayName("OCR throws exception → status should be set to FAILED in error handler transaction")
         void processAsync_OcrThrows_SetsStatusToFailed() {
@@ -274,6 +278,7 @@ class KycOrchestrationServiceTest {
             verify(transactionTemplate, atLeast(2)).execute(any(TransactionCallback.class));
         }
 
+        @SuppressWarnings("unchecked")
         @Test
         @DisplayName("OCR throws Error (e.g. UnsatisfiedLinkError) → status should be set to FAILED")
         void processAsync_OcrThrowsError_SetsStatusToFailed() {

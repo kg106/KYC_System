@@ -1,9 +1,10 @@
-package com.example.kyc_system.service;
+package com.example.kyc_system.service.impl;
 
 import com.example.kyc_system.dto.KycMonthlyReportDTO;
 import com.example.kyc_system.dto.KycReportDataDTO;
 import com.example.kyc_system.repository.KycRequestRepository;
 import com.example.kyc_system.repository.UserRepository;
+import com.example.kyc_system.service.KycRequestService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -79,10 +80,10 @@ class KycReportServiceImplTest {
             // Mock Detailed Data
             List<KycReportDataDTO> reportDataList = List.of(
                     KycReportDataDTO.builder().userId(1L).userName("User1").status("VERIFIED").build());
-            when(requestService.getReportData(eq(dateFrom), eq(dateTo))).thenReturn(reportDataList);
+            when(requestService.getReportData(eq(dateFrom), eq(dateTo), any())).thenReturn(reportDataList);
 
             // Execute
-            KycMonthlyReportDTO report = reportService.generateMonthlyReport(dateFrom, dateTo);
+            KycMonthlyReportDTO report = reportService.generateMonthlyReport(dateFrom, dateTo, null);
 
             // Assert
             assertNotNull(report);
@@ -118,10 +119,10 @@ class KycReportServiceImplTest {
             when(userRepository.countNewUsersBetween(any(LocalDateTime.class), any(LocalDateTime.class)))
                     .thenReturn(0L);
             when(userRepository.count()).thenReturn(50L);
-            when(requestService.getReportData(eq(dateFrom), eq(dateTo))).thenReturn(List.of());
+            when(requestService.getReportData(eq(dateFrom), eq(dateTo), any())).thenReturn(List.of());
 
             // Execute
-            KycMonthlyReportDTO report = reportService.generateMonthlyReport(dateFrom, dateTo);
+            KycMonthlyReportDTO report = reportService.generateMonthlyReport(dateFrom, dateTo, null);
 
             // Assert
             assertNotNull(report);

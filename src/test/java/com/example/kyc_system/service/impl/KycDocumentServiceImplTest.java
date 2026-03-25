@@ -1,4 +1,4 @@
-package com.example.kyc_system.service;
+package com.example.kyc_system.service.impl;
 
 import com.example.kyc_system.config.KycProperties;
 import com.example.kyc_system.entity.KycDocument;
@@ -6,7 +6,6 @@ import com.example.kyc_system.entity.KycRequest;
 import com.example.kyc_system.enums.DocumentType;
 import com.example.kyc_system.repository.KycDocumentRepository;
 import com.example.kyc_system.repository.KycRequestRepository;
-import com.example.kyc_system.util.KycFileValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

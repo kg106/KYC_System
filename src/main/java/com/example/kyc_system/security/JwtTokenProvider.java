@@ -29,10 +29,12 @@ public class JwtTokenProvider {
     private long jwtExpirationDate;
 
     /**
-     * Generates a JWT access token from the authenticated user with a tenantId
-     * claim.
-     * The tenantId is embedded so TenantResolutionFilter can scope requests without
-     * a header.
+     * Generates a JWT access token from the authenticated user with a tenantId claim.
+     * The tenantId is embedded so TenantResolutionFilter can scope requests without a header.
+     *
+     * @param authentication the authentication object containing user details
+     * @param tenantId the ID of the tenant the user belongs to
+     * @return a signed JWT token string
      */
     public String generateToken(Authentication authentication, String tenantId) {
         String username = authentication.getName();
@@ -48,7 +50,12 @@ public class JwtTokenProvider {
                 .compact();
     }
 
-    /** Generates a JWT token from username only (used during token refresh). */
+    /**
+     * Generates a JWT token from username only (used during token refresh).
+     *
+     * @param username the username to include in the token subject
+     * @return a signed JWT token string
+     */
     public String generateTokenFromUsername(String username) {
         Date now = new Date();
         Date expireDate = new Date(now.getTime() + jwtExpirationDate);
@@ -60,24 +67,43 @@ public class JwtTokenProvider {
                 .compact();
     }
 
-    /** Builds the HMAC signing key from the Base64-encoded secret. */
+    /**
+     * Builds the HMAC signing key from the Base64-encoded secret.
+     *
+     * @return the cryptographic key for signing/verifying tokens
+     */
     private Key key() {
         return Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtSecret));
     }
 
-    /** Extracts the username (subject) from a JWT token. */
+    /**
+     * Extracts the username (subject) from a JWT token.
+     *
+     * @param token the JWT token string
+     * @return the username embedded in the token
+     */
     public String getUsername(String token) {
         Claims claims = Jwts.parserBuilder().setSigningKey(key()).build().parseClaimsJws(token).getBody();
         return claims.getSubject();
     }
 
-    /** Extracts the tenantId custom claim from a JWT token. */
+    /**
+     * Extracts the tenantId custom claim from a JWT token.
+     *
+     * @param token the JWT token string
+     * @return the tenantId claim value
+     */
     public String getTenantIdFromToken(String token) {
         Claims claims = Jwts.parserBuilder().setSigningKey(key()).build().parseClaimsJws(token).getBody();
         return claims.get("tenantId", String.class);
     }
 
-    /** Validates the JWT token (checks signature, expiration, etc.). */
+    /**
+     * Validates the JWT token (checks signature, expiration, etc.).
+     *
+     * @param token the JWT token string
+     * @return true if the token is valid, false otherwise
+     */
     public boolean validateToken(String token) {
         try {
             Jwts.parserBuilder().setSigningKey(key()).build().parse(token);
@@ -91,8 +117,10 @@ public class JwtTokenProvider {
 
     /**
      * Returns the remaining time (ms) before this token expires.
-     * Used by TokenBlacklistService to set Redis TTL matching the token's remaining
-     * life.
+     * Used by TokenBlacklistService to set Redis TTL matching the token's remaining life.
+     *
+     * @param token the JWT token string
+     * @return remaining time in milliseconds
      */
     public long getExpirationRemaining(String token) {
         Claims claims = Jwts.parserBuilder().setSigningKey(key()).build().parseClaimsJws(token).getBody();

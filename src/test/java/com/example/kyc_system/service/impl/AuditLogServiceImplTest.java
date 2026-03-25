@@ -1,7 +1,6 @@
-package com.example.kyc_system.service;
+package com.example.kyc_system.service.impl;
 
 import com.example.kyc_system.entity.AuditLog;
-import com.example.kyc_system.service.impl.*;
 import com.example.kyc_system.repository.AuditLogRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

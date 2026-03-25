@@ -19,7 +19,7 @@ import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.LockedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
-// import org.springframework.security.authentication.DisabledException;
+
 
 /**
  * Centralized exception handler for all REST controllers.

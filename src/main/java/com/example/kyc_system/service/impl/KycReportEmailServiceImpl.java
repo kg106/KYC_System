@@ -12,7 +12,11 @@ import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-// service/impl/KycReportEmailServiceImpl.java
+/**
+ * Implementation of KYC Report Emailing service.
+ * Handles the preparation of email messages with PDF attachments 
+ * and sends them asynchronously to configured recipients.
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -27,8 +31,14 @@ public class KycReportEmailServiceImpl {
   @Value("${spring.mail.username}")
   private String senderEmail;
 
+  /**
+   * Generates a PDF report and dispatches it via email.
+   * Runs asynchronously.
+   *
+   * @param report the structured report data to include
+   */
   @Async
-  public void sendMonthlyReport(KycMonthlyReportDTO report) {
+  public void sendMonthlyReport(KycMonthlyReportDTO report, String recipientEmail) {
     try {
       log.info("Generating PDF for report range: {} to {}", report.getDateFrom(), report.getDateTo());
       byte[] pdfContent = pdfService.generateReportPdf(report);
@@ -37,7 +47,13 @@ public class KycReportEmailServiceImpl {
       MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
       helper.setFrom(senderEmail);
-      helper.setTo(recipients.split(","));
+
+      if (recipientEmail != null && !recipientEmail.isBlank()) {
+        helper.setTo(recipientEmail);
+      } else {
+        helper.setTo(recipients.split(","));
+      }
+
       helper.setSubject(String.format("📊 KYC Report - [%s to %s]",
           report.getDateFrom(), report.getDateTo()));
 
@@ -58,6 +74,9 @@ public class KycReportEmailServiceImpl {
     }
   }
 
+  /**
+   * Constructs the HTML message body for the email.
+   */
   private String buildHtmlBody(KycMonthlyReportDTO r) {
     String dateRange = String.format("%s to %s", r.getDateFrom(), r.getDateTo());
 

@@ -1,10 +1,11 @@
-package com.example.kyc_system.service;
+package com.example.kyc_system.service.impl;
 
 import com.example.kyc_system.context.TenantContext;
 import com.example.kyc_system.dto.*;
 import com.example.kyc_system.entity.*;
 import com.example.kyc_system.repository.*;
 import com.example.kyc_system.security.JwtTokenProvider;
+import com.example.kyc_system.service.KycDocumentService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -13,7 +14,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 
 import java.util.List;

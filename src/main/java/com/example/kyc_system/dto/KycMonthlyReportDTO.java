@@ -10,13 +10,21 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 // dto/KycMonthlyReportDTO.java
+/**
+ * Aggregate report DTO for KYC performance and user registration metrics.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class KycMonthlyReportDTO {
+    /** Start date of the reporting period. */
     private LocalDate dateFrom;
+
+    /** End date of the reporting period. */
     private LocalDate dateTo;
+
+    /** Total number of KYC requests in this period. */
     private long totalRequests;
     private long verified;
     private long failed;

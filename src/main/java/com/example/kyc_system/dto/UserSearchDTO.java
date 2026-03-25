@@ -12,8 +12,15 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 public class UserSearchDTO {
+    /** Filter by user's full name. */
     private String name;
+
+    /** Filter by user's email. */
     private String email;
+
+    /** Filter by user's mobile number. */
     private String mobileNumber;
+
+    /** Filter by account active status. */
     private Boolean isActive;
 }

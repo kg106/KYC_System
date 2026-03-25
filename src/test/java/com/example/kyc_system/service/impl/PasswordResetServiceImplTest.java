@@ -1,8 +1,9 @@
-package com.example.kyc_system.service;
+package com.example.kyc_system.service.impl;
 
 import com.example.kyc_system.dto.PasswordResetDTO;
 import com.example.kyc_system.entity.User;
 import com.example.kyc_system.repository.UserRepository;
+import com.example.kyc_system.service.RefreshTokenService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -73,11 +74,12 @@ class PasswordResetServiceImplTest {
 
         // Inject token into internal storage via Reflection for testing resetPassword
         // independently
+        @SuppressWarnings("unchecked")
         Map<String, Object> tokenStorage = (Map<String, Object>) ReflectionTestUtils.getField(passwordResetService,
                 "tokenStorage");
         try {
             Class<?> tokenInfoClass = Class
-                    .forName("com.example.kyc_system.service.PasswordResetServiceImpl$TokenInfo");
+                    .forName("com.example.kyc_system.service.impl.PasswordResetServiceImpl$TokenInfo");
             Object tokenInfo = tokenInfoClass.getDeclaredConstructors()[0].newInstance(token,
                     LocalDateTime.now().plusMinutes(15));
             tokenStorage.put(email, tokenInfo);
@@ -110,11 +112,12 @@ class PasswordResetServiceImplTest {
         PasswordResetDTO dto = new PasswordResetDTO(email, token, "pass1", "pass2");
 
         // Inject valid token
+        @SuppressWarnings("unchecked")
         Map<String, Object> tokenStorage = (Map<String, Object>) ReflectionTestUtils.getField(passwordResetService,
                 "tokenStorage");
         try {
             Class<?> tokenInfoClass = Class
-                    .forName("com.example.kyc_system.service.PasswordResetServiceImpl$TokenInfo");
+                    .forName("com.example.kyc_system.service.impl.PasswordResetServiceImpl$TokenInfo");
             Object tokenInfo = tokenInfoClass.getDeclaredConstructors()[0].newInstance(token,
                     LocalDateTime.now().plusMinutes(15));
             tokenStorage.put(email, tokenInfo);

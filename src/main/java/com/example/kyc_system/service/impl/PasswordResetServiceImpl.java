@@ -1,8 +1,10 @@
-package com.example.kyc_system.service;
+package com.example.kyc_system.service.impl;
 
 import com.example.kyc_system.dto.PasswordResetDTO;
 import com.example.kyc_system.entity.User;
 import com.example.kyc_system.repository.UserRepository;
+import com.example.kyc_system.service.PasswordResetService;
+import com.example.kyc_system.service.RefreshTokenService;
 import com.example.kyc_system.util.PasswordUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +21,14 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Implementation of PasswordResetService.
+ * Handles the secure lifecycle of forgotten password recovery:
+ * - Generation of short-lived (15m) numeric OTP tokens.
+ * - Rate limiting (max 5 attempts per day) to prevent brute force.
+ * - Async email dispatch.
+ * - Post-reset session revocation (logging out all devices).
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -28,10 +38,12 @@ public class PasswordResetServiceImpl implements PasswordResetService {
     private final JavaMailSender mailSender;
     private final RefreshTokenService refreshTokenService;
 
-    // In-memory storage for tokens and rate limiting
+    /** In-memory storage for active reset tokens (Key: Email). */
     private final Map<String, TokenInfo> tokenStorage = new ConcurrentHashMap<>();
+    /** In-memory storage for rate limiting tracking (Key: Email). */
     private final Map<String, AttemptInfo> rateLimitStorage = new ConcurrentHashMap<>();
 
+    /** Model for token metadata. */
     private static class TokenInfo {
         String token;
         LocalDateTime expiry;
@@ -42,6 +54,7 @@ public class PasswordResetServiceImpl implements PasswordResetService {
         }
     }
 
+    /** Model for attempt tracking. */
     private static class AttemptInfo {
         int count;
         LocalDate date;
@@ -52,6 +65,14 @@ public class PasswordResetServiceImpl implements PasswordResetService {
         }
     }
 
+    /**
+     * Generates a 6-digit reset token if the email exists.
+     * Enforces rate limiting before processing.
+     * Always returns a generic success message to prevent user enumeration.
+     *
+     * @param email user email
+     * @return generic feedback message
+     */
     @Override
     public String generateToken(String email) {
         checkRateLimit(email);
@@ -64,18 +85,16 @@ public class PasswordResetServiceImpl implements PasswordResetService {
             // Send real email in the background
             sendEmail(email, token);
 
-            // Keep logging for debugging purposes
-            log.info("**************************************************");
             log.info("PASSWORD RESET TOKEN FOR {}: {}", email, token);
-            log.info("**************************************************");
-
             incrementAttempt(email);
         }
 
-        // Always return the same message for security reasons
         return "If account exist, then email has been sent.";
     }
 
+    /**
+     * Asynchronously sends the reset token email.
+     */
     @Async
     protected void sendEmail(String to, String token) {
         try {
@@ -92,6 +111,12 @@ public class PasswordResetServiceImpl implements PasswordResetService {
         }
     }
 
+    /**
+     * Validates the token and updates the user's password.
+     * Revokes all active refresh tokens for the user upon successful reset.
+     *
+     * @param resetDTO contains email, new password, and token
+     */
     @Override
     @Transactional
     public void resetPassword(PasswordResetDTO resetDTO) {
@@ -125,6 +150,7 @@ public class PasswordResetServiceImpl implements PasswordResetService {
         log.info("Password successfully reset for user: {}. All sessions revoked.", email);
     }
 
+    /** Helper to check if the user has exceeded their daily reset limit. */
     private void checkRateLimit(String email) {
         AttemptInfo info = rateLimitStorage.get(email);
         LocalDate today = LocalDate.now();
@@ -135,6 +161,7 @@ public class PasswordResetServiceImpl implements PasswordResetService {
         }
     }
 
+    /** Increments the attempt counter for rate limiting. */
     private void incrementAttempt(String email) {
         AttemptInfo info = rateLimitStorage.get(email);
         LocalDate today = LocalDate.now();

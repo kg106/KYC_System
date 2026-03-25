@@ -46,16 +46,25 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         this.tokenBlacklistService = tokenBlacklistService;
     }
 
+    /**
+     * Filters incoming requests to perform JWT authentication.
+     *
+     * @param request the HTTP request
+     * @param response the HTTP response
+     * @param filterChain the filter chain
+     * @throws ServletException in case of servlet errors
+     * @throws IOException in case of I/O errors
+     */
     @Override
     protected void doFilterInternal(HttpServletRequest request,
             HttpServletResponse response,
             FilterChain filterChain)
             throws ServletException, IOException {
 
+        // Extract token from request header
         String token = getTokenFromRequest(request);
 
-        // Only proceed if token exists, is valid, and hasn't been blacklisted (logged
-        // out)
+        // Only proceed if token exists, is valid, and hasn't been blacklisted (logged out)
         if (StringUtils.hasText(token) && jwtTokenProvider.validateToken(token)
                 && !tokenBlacklistService.isTokenBlacklisted(token)) {
 
@@ -72,7 +81,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
             // Extract tenantId from JWT and attach it as additional metadata
-            // This will be used by TenantResolutionFilter
+            // This will be used by TenantResolutionFilter downstream
             String tenantId = jwtTokenProvider.getTenantIdFromToken(token);
             if (tenantId != null) {
                 Map<String, String> extraDetails = new HashMap<>();
@@ -80,13 +89,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 authToken.setDetails(extraDetails);
             }
 
+            // Set the authentication in the security context
             SecurityContextHolder.getContext().setAuthentication(authToken);
         }
 
+        // Continue the filter chain
         filterChain.doFilter(request, response);
     }
 
-    /** Extracts the Bearer token from the Authorization header. */
+    /**
+     * Extracts the Bearer token from the Authorization header of the request.
+     *
+     * @param request the HTTP request
+     * @return the JWT token if present and validly formatted, otherwise null
+     */
     private String getTokenFromRequest(HttpServletRequest request) {
         String bearerToken = request.getHeader("Authorization");
         if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {

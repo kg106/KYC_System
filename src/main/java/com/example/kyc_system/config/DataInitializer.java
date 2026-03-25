@@ -29,12 +29,19 @@ public class DataInitializer implements CommandLineRunner {
         private final PasswordEncoder passwordEncoder;
         private final JdbcTemplate jdbcTemplate;
 
+        /**
+         * Orchestrates the initialization of the database on application startup.
+         *
+         * @param args command line arguments
+         * @throws Exception in case of error during initialization
+         */
         @Override
         @Transactional
         public void run(String... args) throws Exception {
                 // Step 1 — Ensure all required roles exist in the database
                 createRoleIfNotFound("ROLE_SUPER_ADMIN");
                 createRoleIfNotFound("ROLE_TENANT_ADMIN");
+                createRoleIfNotFound("ROLE_ADMIN");
                 createRoleIfNotFound("ROLE_USER");
 
                 // Step 2 — Create "system" tenant (used exclusively by superadmin)

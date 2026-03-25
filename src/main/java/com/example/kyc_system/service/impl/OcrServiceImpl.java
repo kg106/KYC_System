@@ -1,7 +1,8 @@
-package com.example.kyc_system.service;
+package com.example.kyc_system.service.impl;
 
 import com.example.kyc_system.dto.OcrResult;
 import com.example.kyc_system.enums.DocumentType;
+import com.example.kyc_system.service.OcrService;
 import net.sourceforge.tess4j.ITesseract;
 import net.sourceforge.tess4j.Tesseract;
 import net.sourceforge.tess4j.TesseractException;
@@ -15,6 +16,11 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * Implementation of OcrService using Tesseract OCR (Tess4J).
+ * Handles document validation (PAN vs Aadhaar) and regex-based field extraction.
+ * Optimized for Indian KYC document formats.
+ */
 @Service
 @Slf4j
 public class OcrServiceImpl implements OcrService {
@@ -22,12 +28,21 @@ public class OcrServiceImpl implements OcrService {
     @Value("${tesseract.datapath}")
     private String dataPath;
 
-    protected ITesseract getTesseractInstance() {
+    /** Configures and returns a Tesseract instance with the specified datapath. */
+    public ITesseract getTesseractInstance() {
         Tesseract t = new Tesseract();
         t.setDatapath(dataPath);
         return t;
     }
 
+    /**
+     * Executes OCR on the provided file and maps the resulting text to an OcrResult.
+     * Enforces document type validation to ensure correct document upload.
+     *
+     * @param file the image/PDF file
+     * @param type the expected document type (PAN/AADHAAR)
+     * @return OcrResult with extracted name, DOB, and ID number
+     */
     @Override
     public OcrResult extract(File file, DocumentType type) {
         try {
@@ -55,6 +70,10 @@ public class OcrServiceImpl implements OcrService {
         }
     }
 
+    /**
+     * Heuristic-based validation to ensure the OCR text contains keywords 
+     * relevant to the expected document type. Throws exception if mismatch found.
+     */
     private void validateDocumentType(String text, DocumentType type) {
         if (text == null || text.isBlank()) {
             return;
@@ -98,6 +117,9 @@ public class OcrServiceImpl implements OcrService {
         }
     }
 
+    /**
+     * Extracts name based on document layout heuristics.
+     */
     private String extractName(String text, DocumentType type) {
         if (text == null || text.isBlank()) {
             return null;

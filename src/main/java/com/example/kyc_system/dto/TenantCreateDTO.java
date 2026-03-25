@@ -5,12 +5,20 @@ import jakarta.validation.constraints.*;
 import lombok.*;
 import java.util.List;
 
+/**
+ * Data Transfer Object for creating a new tenant.
+ * Includes optional fields for auto-provisioning a tenant administrator.
+ */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class TenantCreateDTO {
 
+    /** 
+     * Logical identifier for the tenant.
+     * Must be lowercase alphanumeric with underscores.
+     */
     @Schema(example = "hdfc_bank")
     @NotBlank(message = "Tenant ID is required")
     @Pattern(regexp = "^[a-z0-9_]{3,50}$", message = "Tenant ID must be lowercase, alphanumeric with underscores only")

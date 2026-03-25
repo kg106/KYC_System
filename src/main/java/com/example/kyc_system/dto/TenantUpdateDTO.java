@@ -6,6 +6,10 @@ import jakarta.validation.constraints.Min;
 import lombok.*;
 import java.util.List;
 
+/**
+ * Data Transfer Object for updating tenant configuration.
+ * Fields not provided will remain unchanged.
+ */
 @Data
 @Builder
 @NoArgsConstructor

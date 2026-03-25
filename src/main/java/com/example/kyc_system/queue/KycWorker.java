@@ -1,6 +1,6 @@
 package com.example.kyc_system.queue;
 
-import com.example.kyc_system.service.KycOrchestrationService;
+import com.example.kyc_system.service.impl.KycOrchestrationService;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;

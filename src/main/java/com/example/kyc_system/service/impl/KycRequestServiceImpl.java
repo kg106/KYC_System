@@ -1,13 +1,15 @@
-package com.example.kyc_system.service;
+package com.example.kyc_system.service.impl;
 
 import com.example.kyc_system.entity.KycRequest;
 import com.example.kyc_system.entity.Tenant;
 import com.example.kyc_system.entity.User;
 import com.example.kyc_system.enums.KycStatus;
-// import com.example.kyc_system.exception.BusinessException;
 import com.example.kyc_system.repository.KycRequestRepository;
 import com.example.kyc_system.repository.TenantRepository;
 
+import com.example.kyc_system.service.AuditLogService;
+import com.example.kyc_system.service.KycRequestService;
+import com.example.kyc_system.service.UserService;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +28,12 @@ import java.util.*;
 import java.time.*;
 import org.springframework.security.core.context.*;
 
+/**
+ * Implementation of KycRequestService.
+ * Manages the KYC request lifecycle, including attempt limits per tenant,
+ * state transition validation, and audit logging.
+ * Enforces strict multi-tenant isolation for all operations.
+ */
 @Service
 @Transactional
 @RequiredArgsConstructor
@@ -35,8 +43,9 @@ public class KycRequestServiceImpl implements KycRequestService {
     private final KycRequestRepository repository;
     private final UserService userService;
     private final AuditLogService auditLogService;
-    private final TenantRepository tenantRepository; // ← add this
+    private final TenantRepository tenantRepository;
 
+    /** Helper to get current principal name from SecurityContext. */
     private String getCurrentUser() {
         if (SecurityContextHolder.getContext().getAuthentication() != null) {
             return SecurityContextHolder.getContext().getAuthentication().getName();
@@ -44,6 +53,16 @@ public class KycRequestServiceImpl implements KycRequestService {
         return "SYSTEM";
     }
 
+    /**
+     * Creates a new KYC request or re-activates a FAILED one.
+     * Enforces tenant-specific daily attempt limits.
+     * Starts a NEW transaction to ensure the attempt is recorded even if subsequent
+     * steps fail.
+     *
+     * @param userId       ID of the user submitting the request
+     * @param documentType type of document being submitted (PAN/AADHAAR)
+     * @return the created or updated KycRequest entity
+     */
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public KycRequest createOrReuse(Long userId, String documentType) {
@@ -74,6 +93,7 @@ public class KycRequestServiceImpl implements KycRequestService {
             KycRequest request = latestRequest.get();
             String status = request.getStatus();
 
+            // Prevent duplicate active requests for the same document type
             if (status.equals(KycStatus.PENDING.name()) ||
                     status.equals(KycStatus.SUBMITTED.name()) ||
                     status.equals(KycStatus.PROCESSING.name())) {
@@ -81,6 +101,7 @@ public class KycRequestServiceImpl implements KycRequestService {
                         "Only one KYC request for " + documentType + " can be processed at a time.");
             }
 
+            // Reuse FAILED request as a new attempt
             if (status.equals(KycStatus.FAILED.name())) {
                 request.setAttemptNumber(request.getAttemptNumber() + 1);
                 request.setStatus(KycStatus.SUBMITTED.name());
@@ -95,6 +116,7 @@ public class KycRequestServiceImpl implements KycRequestService {
             }
         }
 
+        // Create fresh request
         User user = userService.getActiveUser(userId);
         KycRequest newRequest = new KycRequest();
         newRequest.setUser(user);
@@ -102,7 +124,7 @@ public class KycRequestServiceImpl implements KycRequestService {
         newRequest.setStatus(KycStatus.SUBMITTED.name());
         newRequest.setAttemptNumber(1);
         newRequest.setSubmittedAt(LocalDateTime.now());
-        newRequest.setTenantId(tenantId); // ← scope to tenant
+        newRequest.setTenantId(tenantId);
 
         try {
             KycRequest saved = repository.save(newRequest);
@@ -119,6 +141,12 @@ public class KycRequestServiceImpl implements KycRequestService {
         }
     }
 
+    /**
+     * Updates request status (e.g., to VERIFIED or FAILED) and logs the event.
+     *
+     * @param requestId ID of the request to update
+     * @param status    the new status to apply
+     */
     @Override
     @Transactional
     public void updateStatus(Long requestId, KycStatus status) {
@@ -133,6 +161,13 @@ public class KycRequestServiceImpl implements KycRequestService {
         log.info("KYC status updated: requestId={}, newStatus={}", requestId, status);
     }
 
+    /**
+     * Fetches the latest request for a user with EAGER loading of document data.
+     * Logs the view action.
+     *
+     * @param userId user ID
+     * @return Optional containing the latest request if found
+     */
     @Override
     @Transactional(readOnly = true)
     public Optional<KycRequest> getLatestByUser(Long userId) {
@@ -155,10 +190,15 @@ public class KycRequestServiceImpl implements KycRequestService {
         return request;
     }
 
+    /**
+     * Fetches all requests for a user, including history.
+     *
+     * @param userId user ID
+     * @return list of all KYC requests for the user
+     */
     @Override
     @Transactional(readOnly = true)
     public List<KycRequest> getAllByUser(Long userId) {
-        // findByUserId is unscoped in KycRequestRepository
         List<KycRequest> requests = repository.findByUserId(userId);
         requests.forEach(r -> {
             r.getKycDocuments().forEach(doc -> doc.getExtractedData().size());
@@ -169,10 +209,17 @@ public class KycRequestServiceImpl implements KycRequestService {
         return requests;
     }
 
+    /**
+     * Searches requests with tenant-aware filtering and pagination.
+     * Supports super-admin global search.
+     *
+     * @param searchDTO search criteria (user ID, name, status, etc.)
+     * @param pageable  pagination info
+     * @return page of KYC requests matching the criteria
+     */
     @Override
     @Transactional(readOnly = true)
     public Page<KycRequest> searchKycRequests(KycRequestSearchDTO searchDTO, Pageable pageable) {
-        // Pass tenant info to specification
         String tenantId = TenantContext.getTenant();
         boolean isSuperAdmin = TenantContext.isSuperAdmin();
 
@@ -197,13 +244,26 @@ public class KycRequestServiceImpl implements KycRequestService {
         return requests;
     }
 
+    /**
+     * Generates report data by aggregating requests across specified date range.
+     *
+     * @param dateFrom start date
+     * @param dateTo   end date
+     * @return list of report DTOs
+     */
     @Override
     @Transactional
-    public List<KycReportDataDTO> getReportData(LocalDate dateFrom, LocalDate dateTo) {
+    public List<KycReportDataDTO> getReportData(LocalDate dateFrom, LocalDate dateTo, String tenantId) {
         List<KycReportDataDTO> report = new ArrayList<>();
 
-        List<KycRequest> result = repository.findByCreatedAtBetweenWithUserAndTenant(dateFrom.atStartOfDay(),
-                dateTo.atTime(LocalTime.MAX));
+        List<KycRequest> result;
+        if (tenantId != null) {
+            result = repository.findByCreatedAtBetweenWithUserAndTenant(tenantId, dateFrom.atStartOfDay(),
+                    dateTo.atTime(LocalTime.MAX));
+        } else {
+            result = repository.findByCreatedAtBetweenWithUserAndTenant(dateFrom.atStartOfDay(),
+                    dateTo.atTime(LocalTime.MAX));
+        }
 
         for (KycRequest kr : result) {
             KycReportDataDTO temp = KycReportDataDTO.builder()

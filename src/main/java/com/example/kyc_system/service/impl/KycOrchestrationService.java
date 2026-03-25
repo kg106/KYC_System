@@ -1,4 +1,4 @@
-package com.example.kyc_system.service;
+package com.example.kyc_system.service.impl;
 
 import com.example.kyc_system.dto.OcrResult;
 import com.example.kyc_system.entity.*;
@@ -6,6 +6,7 @@ import com.example.kyc_system.enums.DocumentType;
 import com.example.kyc_system.enums.KycStatus;
 import com.example.kyc_system.queue.KycQueueService;
 import com.example.kyc_system.repository.KycRequestRepository;
+import com.example.kyc_system.service.*;
 import com.example.kyc_system.util.KycFileValidator;
 
 import lombok.RequiredArgsConstructor;
@@ -18,6 +19,11 @@ import java.io.File;
 
 import org.springframework.transaction.support.TransactionTemplate;
 
+/**
+ * Orchestration service for the KYC lifecycle.
+ * Manages the transition from synchronous document submission to asynchronous OCR/Verification processing.
+ * Implements a check-and-set (CAS) pattern for state safety.
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -33,6 +39,15 @@ public class KycOrchestrationService {
         private final KycVerificationService verificationService;
         private final KycFileValidator fileValidator;
 
+        /**
+         * Submits a KYC request. Validates file, saves it, and pushes the request to a processing queue.
+         *
+         * @param userId user identifier
+         * @param documentType type of document (PAN, AADHAAR)
+         * @param file the actual image/PDF file
+         * @param documentNumber identifier on the document (e.g., PAN number)
+         * @return newly created or reused KYC request ID
+         */
         @Transactional
         public Long submitKyc(Long userId, DocumentType documentType, MultipartFile file, String documentNumber) {
                 fileValidator.validate(file);
@@ -57,6 +72,12 @@ public class KycOrchestrationService {
                 return request.getId();
         }
 
+        /**
+         * Processes a queued KYC request. Uses TransactionTemplate to manage short locks
+         * while keeping slow OCR operations outside the database transaction.
+         *
+         * @param requestId ID of the request to process
+         */
         public void processAsync(Long requestId) {
                 // 1. Atomic Check-And-Set (CAS) - Short Transaction
                 int rows = transactionTemplate.execute(status -> kycRequestRepository.updateStatusIfPending(requestId,
@@ -116,5 +137,4 @@ public class KycOrchestrationService {
                         });
                 }
         }
-
 }

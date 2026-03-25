@@ -65,7 +65,7 @@ class KycReportEmailServiceImplTest {
         when(mailSender.createMimeMessage()).thenReturn(mimeMessage);
 
         // Act
-        emailService.sendMonthlyReport(report);
+        emailService.sendMonthlyReport(report, null);
 
         // Assert
         verify(pdfService).generateReportPdf(report);
@@ -86,7 +86,7 @@ class KycReportEmailServiceImplTest {
         when(pdfService.generateReportPdf(report)).thenThrow(new RuntimeException("PDF Generation Failed"));
 
         // Act
-        emailService.sendMonthlyReport(report);
+        emailService.sendMonthlyReport(report, null);
 
         // Assert
         verify(pdfService).generateReportPdf(report);

@@ -1,10 +1,11 @@
-package com.example.kyc_system.service;
+package com.example.kyc_system.service.impl;
 
 import com.example.kyc_system.dto.OcrResult;
 import com.example.kyc_system.entity.KycDocument;
 import com.example.kyc_system.entity.KycExtractedData;
 import com.example.kyc_system.repository.KycDocumentRepository;
 import com.example.kyc_system.repository.KycExtractedDataRepository;
+import com.example.kyc_system.service.KycExtractionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -13,8 +14,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
- * Persists OCR-extracted data (name, DOB, document number) to the database.
- * Called by KycOrchestrationService after OCR processing completes.
+ * Implementation of KycExtractionService.
+ * Maps raw OCR fields (name, DOB, document number) to the database entities.
+ * Includes defensive parsing for OCR-extracted date strings.
  */
 @Service
 @RequiredArgsConstructor
@@ -24,6 +26,13 @@ public class KycExtractionServiceImpl implements KycExtractionService {
     private final KycExtractedDataRepository repository;
     private final KycDocumentRepository documentRepository;
 
+    /**
+     * Persists OCR results linked to a specific KYC document.
+     *
+     * @param documentId document ID
+     * @param ocrResult raw result DTO from OCR service
+     * @return persisted entity
+     */
     @Override
     public KycExtractedData save(Long documentId, OcrResult ocrResult) {
         KycDocument document = documentRepository.findById(documentId)
@@ -44,8 +53,11 @@ public class KycExtractionServiceImpl implements KycExtractionService {
     }
 
     /**
-     * Safely parses a date string — returns null instead of throwing on invalid
-     * format.
+     * Safely parses an ISO date string (YYYY-MM-DD).
+     * Returns null instead of throwing an exception to handle poor OCR quality gracefully.
+     *
+     * @param dateStr raw string from OCR
+     * @return parsed LocalDate or null
      */
     private LocalDate safeParseDate(String dateStr) {
         if (dateStr == null || dateStr.trim().isEmpty()) {

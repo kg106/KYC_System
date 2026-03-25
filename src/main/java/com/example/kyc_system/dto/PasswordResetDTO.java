@@ -9,6 +9,10 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * Data Transfer Object for Step 2 of password reset.
+ * User provides the received token and their new password.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

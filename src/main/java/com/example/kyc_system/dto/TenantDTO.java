@@ -3,6 +3,9 @@ package com.example.kyc_system.dto;
 import lombok.*;
 import java.time.LocalDateTime;
 
+/**
+ * Data Transfer Object for Tenant information.
+ */
 @Data
 @Builder
 @NoArgsConstructor

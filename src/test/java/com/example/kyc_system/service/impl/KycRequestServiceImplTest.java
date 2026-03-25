@@ -1,24 +1,22 @@
-package com.example.kyc_system.service;
+package com.example.kyc_system.service.impl;
 
 import com.example.kyc_system.context.TenantContext;
 import com.example.kyc_system.entity.*;
 import com.example.kyc_system.enums.KycStatus;
 import com.example.kyc_system.repository.KycRequestRepository;
 import com.example.kyc_system.repository.TenantRepository;
+import com.example.kyc_system.service.AuditLogService;
+import com.example.kyc_system.service.UserService;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 

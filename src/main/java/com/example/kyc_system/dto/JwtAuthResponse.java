@@ -3,15 +3,20 @@ package com.example.kyc_system.dto;
 import lombok.*;
 
 /**
- * DTO returned after successful login.
- * Contains the JWT access token and the refresh token.
+ * Response DTO containing authentication tokens.
+ * Returned after successful login or token refresh.
  */
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class JwtAuthResponse {
-    private String accessToken; // Short-lived JWT (default: 15 min)
+    /** The short-lived JWT access token. */
+    private String accessToken;
+
+    /** The type of token (always "Bearer"). */
     private String tokenType = "Bearer";
-    private String refreshToken; // Long-lived refresh token (default: 7 days)
+
+    /** The long-lived refresh token used to obtain new access tokens. */
+    private String refreshToken;
 }

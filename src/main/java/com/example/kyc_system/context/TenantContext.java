@@ -9,20 +9,28 @@ package com.example.kyc_system.context;
  */
 public class TenantContext {
 
-    // InheritableThreadLocal ensures tenant propagates
-    // to child threads (KycWorker async processing)
+    // InheritableThreadLocal ensures tenant propagates to child threads (KycWorker async processing)
     private static final InheritableThreadLocal<String> CURRENT_TENANT = new InheritableThreadLocal<>();
 
     /**
-     * Special constant used when the superadmin is operating (bypasses tenant
-     * scoping).
+     * Special constant used when the superadmin is operating (bypasses tenant scoping).
      */
     public static final String SUPER_ADMIN_TENANT = "SUPER_ADMIN";
 
+    /**
+     * Sets the current tenant ID in the thread-local storage.
+     *
+     * @param tenantId the tenant ID to bind to the current thread
+     */
     public static void setTenant(String tenantId) {
         CURRENT_TENANT.set(tenantId);
     }
 
+    /**
+     * Retrieves the current tenant ID from the thread-local storage.
+     *
+     * @return the current tenant ID or null if not set
+     */
     public static String getTenant() {
         return CURRENT_TENANT.get();
     }

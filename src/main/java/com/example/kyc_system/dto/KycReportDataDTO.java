@@ -6,6 +6,9 @@ import java.time.LocalDate;
 import lombok.Builder;
 import lombok.Data;
 
+/**
+ * Individual data row for a KYC report.
+ */
 @Data
 @Builder
 public class KycReportDataDTO {

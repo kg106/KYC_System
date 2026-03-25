@@ -3,6 +3,11 @@ package com.example.kyc_system.util;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+/**
+ * Utility for secure password management using BCrypt.
+ * Wraps Spring Security's BCryptPasswordEncoder with a static interface
+ * for use in entities or non-bean components where injection is unavailable.
+ */
 public class PasswordUtil {
 
     private static final PasswordEncoder encoder = new BCryptPasswordEncoder();

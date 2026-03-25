@@ -21,6 +21,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.access.expression.method.*;
 
 /**
  * Central Spring Security configuration.
@@ -41,13 +42,24 @@ public class SecurityConfig {
         private final CustomAccessDeniedHandler accessDeniedHandler;
         private final TenantResolutionFilter tenantResolutionFilter;
 
-        /** BCrypt password encoder bean used for hashing passwords. */
+        /**
+         * BCrypt password encoder bean used for hashing passwords securely.
+         *
+         * @return BCryptPasswordEncoder instance
+         */
         @Bean
         public static PasswordEncoder passwordEncoder() {
                 return new BCryptPasswordEncoder();
         }
 
-        /** Exposes Spring's default AuthenticationManager as a bean. */
+        /**
+         * Exposes Spring's default AuthenticationManager as a bean.
+         * Required for manual authentication (e.g., login controller).
+         *
+         * @param configuration the authentication configuration
+         * @return the AuthenticationManager instance
+         * @throws Exception if manager retrieval fails
+         */
         @Bean
         public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
                 return configuration.getAuthenticationManager();
@@ -55,7 +67,9 @@ public class SecurityConfig {
 
         /**
          * Defines role hierarchy so higher roles automatically inherit permissions:
-         * SUPER_ADMIN inherits TENANT_ADMIN, which inherits ADMIN.
+         * SUPER_ADMIN > TENANT_ADMIN > ADMIN.
+         *
+         * @return the configured RoleHierarchy bean
          */
         @Bean
         public RoleHierarchy roleHierarchy() {
@@ -66,11 +80,14 @@ public class SecurityConfig {
 
         /**
          * Applies the RoleHierarchy to method security (@PreAuthorize).
+         *
+         * @param roleHierarchy the existing role hierarchy bean
+         * @return a custom method security expression handler
          */
         @Bean
-        public org.springframework.security.access.expression.method.MethodSecurityExpressionHandler methodSecurityExpressionHandler(
+        public MethodSecurityExpressionHandler methodSecurityExpressionHandler(
                         RoleHierarchy roleHierarchy) {
-                org.springframework.security.access.expression.method.DefaultMethodSecurityExpressionHandler methodHandler = new org.springframework.security.access.expression.method.DefaultMethodSecurityExpressionHandler();
+                DefaultMethodSecurityExpressionHandler methodHandler = new DefaultMethodSecurityExpressionHandler();
                 methodHandler.setRoleHierarchy(roleHierarchy);
                 return methodHandler;
         }
@@ -110,10 +127,8 @@ public class SecurityConfig {
                 // 1. JwtAuthenticationFilter runs first — extracts user identity from JWT
                 // 2. TenantResolutionFilter runs after — resolves tenant from JWT claims or
                 // headers
-                http.addFilterBefore(jwtAuthenticationFilter,
-                                UsernamePasswordAuthenticationFilter.class);
-                http.addFilterAfter(tenantResolutionFilter,
-                                JwtAuthenticationFilter.class);
+                http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                http.addFilterAfter(tenantResolutionFilter, JwtAuthenticationFilter.class);
 
                 return http.build();
         }

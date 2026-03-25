@@ -24,15 +24,25 @@ import java.util.Map;
 @Slf4j
 public class CustomAuthenticationEntryPoint implements AuthenticationEntryPoint {
 
+    /**
+     * Commences an authentication scheme by returning a structured JSON response.
+     *
+     * @param request the request that resulted in an AuthenticationException
+     * @param response the response so that a status code and error message can be sent
+     * @param authException the exception that caused the invocation
+     * @throws IOException in case of I/O errors
+     */
     @Override
     public void commence(HttpServletRequest request, HttpServletResponse response,
             AuthenticationException authException) throws IOException {
 
-        log.warn("Unauthorized access attempt: path={}, message={}", request.getServletPath(),
-                authException.getMessage());
+        log.warn("Unauthorized access attempt: path={}, message={}", request.getServletPath(), authException.getMessage());
+        
+        // Set response status and content type
         response.setStatus(HttpStatus.UNAUTHORIZED.value());
         response.setContentType("application/json");
 
+        // Construct error response body
         Map<String, Object> body = new HashMap<>();
         body.put("timestamp", LocalDateTime.now().toString());
         body.put("status", HttpStatus.UNAUTHORIZED.value());
@@ -40,6 +50,7 @@ public class CustomAuthenticationEntryPoint implements AuthenticationEntryPoint 
         body.put("message", "You need to login first to access this resource");
         body.put("path", request.getServletPath());
 
+        // Write JSON response
         new ObjectMapper().writeValue(response.getOutputStream(), body);
     }
 }

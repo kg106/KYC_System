@@ -13,6 +13,11 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * Implementation of AuditLogService.
+ * Persists audit logs asynchronously to avoid blocking the main request thread.
+ * Includes data masking for sensitive fields (PII).
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -20,10 +25,15 @@ public class AuditLogServiceImpl implements AuditLogService {
 
     private final AuditLogRepository auditLogRepository;
 
+    /** Keys that should be masked before persisting to the audit log. */
     private static final Set<String> SENSITIVE_KEYS = Set.of(
             "password", "token", "secret", "authorization",
             "aadhaar", "pan", "passport", "documentnumber", "dob");
 
+    /**
+     * Logs an action with a human-readable string.
+     * Runs asynchronously.
+     */
     @Override
     @Async
     public void logAction(String action, String entityType, Long entityId, String details, String performedBy) {
@@ -36,6 +46,10 @@ public class AuditLogServiceImpl implements AuditLogService {
         }
     }
 
+    /**
+     * Logs an action with a map of metadata.
+     * Runs asynchronously.
+     */
     @Override
     @Async
     public void logAction(String action, String entityType, Long entityId, Map<String, Object> detailsMap,
@@ -47,6 +61,10 @@ public class AuditLogServiceImpl implements AuditLogService {
         }
     }
 
+    /**
+     * Internal helper to build and save the AuditLog entity.
+     * Performs data masking before save.
+     */
     private void logActionInternal(String action, String entityType, Long entityId, Map<String, Object> detailsMap,
             String performedBy) {
         String tenantId = TenantContext.getTenant() != null ? TenantContext.getTenant() : "system";
@@ -65,6 +83,9 @@ public class AuditLogServiceImpl implements AuditLogService {
         auditLogRepository.save(auditLog);
     }
 
+    /**
+     * Recursively masks sensitive fields in the details map.
+     */
     @SuppressWarnings("unchecked")
     private Map<String, Object> maskSensitiveData(Map<String, Object> data) {
         if (data == null)
@@ -86,6 +107,7 @@ public class AuditLogServiceImpl implements AuditLogService {
         return maskedData;
     }
 
+    /** Checks if a key name suggests it contains PII. */
     private boolean isSensitiveKey(String key) {
         if (key == null)
             return false;

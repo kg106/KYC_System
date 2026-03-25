@@ -10,10 +10,20 @@ import com.example.kyc_system.service.KycReportPdfService;
 
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * Implementation of KycReportPdfService.
+ * Uses XHTMLRenderer (Flying Saucer) and iText to convert HTML templates to PDF documents.
+ */
 @Service
 @Slf4j
 public class KycReportPdfServiceImpl implements KycReportPdfService {
 
+    /**
+     * Renders a KYC Monthly Report as a downloadable PDF byte array.
+     *
+     * @param report the data to render
+     * @return PDF content as bytes
+     */
     @Override
     public byte[] generateReportPdf(KycMonthlyReportDTO report) {
         String htmlContent = buildHtmlContent(report);
@@ -29,6 +39,10 @@ public class KycReportPdfServiceImpl implements KycReportPdfService {
         }
     }
 
+    /**
+     * Builds the HTML/XHTML string for the report.
+     * Note: XHTMLRenderer requires strict XHTML compliance and supports basic CSS.
+     */
     private String buildHtmlContent(KycMonthlyReportDTO r) {
         String dateRange = String.format("%s to %s", r.getDateFrom(), r.getDateTo());
 

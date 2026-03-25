@@ -11,7 +11,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import com.example.kyc_system.dto.*;
+// import com.example.kyc_system.dto.*;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -46,13 +46,13 @@ class KycReportSchedulerTest {
             LocalDate expectedTo = lastMonth.atEndOfMonth();
 
             KycMonthlyReportDTO mockReport = new KycMonthlyReportDTO();
-            when(reportService.generateMonthlyReport(expectedFrom, expectedTo)).thenReturn(mockReport);
+            when(reportService.generateMonthlyReport(eq(expectedFrom), eq(expectedTo), any())).thenReturn(mockReport);
 
             scheduler.sendMonthlyReport();
 
             ArgumentCaptor<LocalDate> fromCaptor = ArgumentCaptor.forClass(LocalDate.class);
             ArgumentCaptor<LocalDate> toCaptor = ArgumentCaptor.forClass(LocalDate.class);
-            verify(reportService).generateMonthlyReport(fromCaptor.capture(), toCaptor.capture());
+            verify(reportService).generateMonthlyReport(fromCaptor.capture(), toCaptor.capture(), any());
 
             assertEquals(expectedFrom, fromCaptor.getValue(),
                     "dateFrom must be the first day of last month");
@@ -64,22 +64,22 @@ class KycReportSchedulerTest {
         @DisplayName("Should pass generated report to emailService for sending")
         void sendMonthlyReport_PassesReportToEmailService() {
             KycMonthlyReportDTO mockReport = new KycMonthlyReportDTO();
-            when(reportService.generateMonthlyReport(any(), any())).thenReturn(mockReport);
+            when(reportService.generateMonthlyReport(any(), any(), any())).thenReturn(mockReport);
 
             scheduler.sendMonthlyReport();
 
-            verify(emailService).sendMonthlyReport(mockReport);
+            verify(emailService).sendMonthlyReport(eq(mockReport), any());
         }
 
         @Test
         @DisplayName("Should call reportService exactly once per invocation")
         void sendMonthlyReport_CallsReportServiceExactlyOnce() {
-            when(reportService.generateMonthlyReport(any(), any())).thenReturn(new KycMonthlyReportDTO());
+            when(reportService.generateMonthlyReport(any(), any(), any())).thenReturn(new KycMonthlyReportDTO());
 
             scheduler.sendMonthlyReport();
 
-            verify(reportService, times(1)).generateMonthlyReport(any(), any());
-            verify(emailService, times(1)).sendMonthlyReport(any());
+            verify(reportService, times(1)).generateMonthlyReport(any(), any(), any());
+            verify(emailService, times(1)).sendMonthlyReport(any(), any());
         }
     }
 
@@ -96,12 +96,12 @@ class KycReportSchedulerTest {
             LocalDate to = LocalDate.of(2025, 1, 31);
             KycMonthlyReportDTO mockReport = new KycMonthlyReportDTO();
 
-            when(reportService.generateMonthlyReport(from, to)).thenReturn(mockReport);
+            when(reportService.generateMonthlyReport(eq(from), eq(to), any())).thenReturn(mockReport);
 
-            scheduler.triggerManually(from, to);
+            scheduler.triggerManually(from, to, null, null);
 
-            verify(reportService).generateMonthlyReport(from, to);
-            verify(emailService).sendMonthlyReport(mockReport);
+            verify(reportService).generateMonthlyReport(eq(from), eq(to), any());
+            verify(emailService).sendMonthlyReport(eq(mockReport), any());
         }
 
         @Test
@@ -111,11 +111,11 @@ class KycReportSchedulerTest {
             LocalDate to = LocalDate.of(2024, 11, 30);
             KycMonthlyReportDTO mockReport = new KycMonthlyReportDTO();
 
-            when(reportService.generateMonthlyReport(from, to)).thenReturn(mockReport);
+            when(reportService.generateMonthlyReport(eq(from), eq(to), any())).thenReturn(mockReport);
 
-            scheduler.triggerManually(from, to);
+            scheduler.triggerManually(from, to, null, null);
 
-            verify(emailService).sendMonthlyReport(mockReport);
+            verify(emailService).sendMonthlyReport(eq(mockReport), any());
         }
 
         @Test
@@ -124,9 +124,9 @@ class KycReportSchedulerTest {
             LocalDate from = LocalDate.of(2025, 3, 1);
             LocalDate to = LocalDate.of(2025, 3, 31);
 
-            when(reportService.generateMonthlyReport(from, to)).thenReturn(new KycMonthlyReportDTO());
+            when(reportService.generateMonthlyReport(eq(from), eq(to), any())).thenReturn(new KycMonthlyReportDTO());
 
-            assertDoesNotThrow(() -> scheduler.triggerManually(from, to));
+            assertDoesNotThrow(() -> scheduler.triggerManually(from, to, null, null));
         }
 
         @Test
@@ -135,10 +135,10 @@ class KycReportSchedulerTest {
             LocalDate from = LocalDate.of(2025, 3, 1);
             LocalDate to = LocalDate.of(2025, 3, 31);
 
-            when(reportService.generateMonthlyReport(from, to))
+            when(reportService.generateMonthlyReport(eq(from), eq(to), any()))
                     .thenThrow(new RuntimeException("Failed to fetch report data"));
 
-            assertThrows(RuntimeException.class, () -> scheduler.triggerManually(from, to));
+            assertThrows(RuntimeException.class, () -> scheduler.triggerManually(from, to, null, null));
             verifyNoInteractions(emailService);
         }
 
@@ -148,12 +148,12 @@ class KycReportSchedulerTest {
             LocalDate from = LocalDate.of(2025, 2, 1);
             LocalDate to = LocalDate.of(2025, 2, 28);
 
-            when(reportService.generateMonthlyReport(from, to)).thenReturn(new KycMonthlyReportDTO());
+            when(reportService.generateMonthlyReport(eq(from), eq(to), any())).thenReturn(new KycMonthlyReportDTO());
 
-            scheduler.triggerManually(from, to);
+            scheduler.triggerManually(from, to, null, null);
 
-            verify(reportService, times(1)).generateMonthlyReport(from, to);
-            verify(emailService, times(1)).sendMonthlyReport(any());
+            verify(reportService, times(1)).generateMonthlyReport(eq(from), eq(to), any());
+            verify(emailService, times(1)).sendMonthlyReport(any(), any());
         }
     }
 }

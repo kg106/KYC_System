@@ -1,4 +1,4 @@
-package com.example.kyc_system.service;
+package com.example.kyc_system.service.impl;
 
 import com.example.kyc_system.dto.OcrResult;
 import com.example.kyc_system.enums.DocumentType;

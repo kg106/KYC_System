@@ -1,9 +1,10 @@
-package com.example.kyc_system.service;
+package com.example.kyc_system.service.impl;
 
 import com.example.kyc_system.dto.*;
 import com.example.kyc_system.entity.*;
 import com.example.kyc_system.exception.BusinessException;
 import com.example.kyc_system.repository.*;
+import com.example.kyc_system.service.TenantService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -14,6 +15,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
+/**
+ * Implementation of TenantService.
+ * Manages tenant organizations, including administrative provisioning and health stats.
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -27,6 +32,9 @@ public class TenantServiceImpl implements TenantService {
     private final KycRequestRepository kycRequestRepository;
     private final PasswordEncoder passwordEncoder;
 
+    /**
+     * Creates a new tenant and optionally sets up their first administrator.
+     */
     @Override
     public TenantDTO createTenant(TenantCreateDTO dto) {
         if (tenantRepository.existsByTenantId(dto.getTenantId())) {
@@ -59,18 +67,27 @@ public class TenantServiceImpl implements TenantService {
         return mapToDTO(saved);
     }
 
+    /**
+     * Retrieves tenant profile.
+     */
     @Override
     @Transactional(readOnly = true)
     public TenantDTO getTenant(String tenantId) {
         return mapToDTO(getOrThrow(tenantId));
     }
 
+    /**
+     * Lists all registered tenants.
+     */
     @Override
     @Transactional(readOnly = true)
     public Page<TenantDTO> getAllTenants(Pageable pageable) {
         return tenantRepository.findAll(pageable).map(this::mapToDTO);
     }
 
+    /**
+     * Updates tenant configuration limits and info.
+     */
     @Override
     public TenantDTO updateTenant(String tenantId, TenantUpdateDTO dto) {
         Tenant tenant = getOrThrow(tenantId);
@@ -87,6 +104,9 @@ public class TenantServiceImpl implements TenantService {
         return mapToDTO(tenantRepository.save(tenant));
     }
 
+    /**
+     * Toggles a tenant's operational status.
+     */
     @Override
     public boolean setActive(String tenantId, boolean active) {
         Tenant tenant = getOrThrow(tenantId);
@@ -99,6 +119,9 @@ public class TenantServiceImpl implements TenantService {
         return true;
     }
 
+    /**
+     * Rotates the API key used for external system integrations.
+     */
     @Override
     public String rotateApiKey(String tenantId) {
         Tenant tenant = getOrThrow(tenantId);
@@ -109,6 +132,9 @@ public class TenantServiceImpl implements TenantService {
         return newKey;
     }
 
+    /**
+     * Aggregates usage and success metrics for a tenant.
+     */
     @Override
     @Transactional(readOnly = true)
     public TenantStatsDTO getStats(String tenantId) {
@@ -132,8 +158,7 @@ public class TenantServiceImpl implements TenantService {
                 .build();
     }
 
-    // ─── Private Helpers ──────────────────────────────────────────
-
+    /** Provisions a primary administrator for a new tenant. */
     private void provisionTenantAdmin(Tenant tenant, String adminEmail, String adminPassword) {
         // Generate a unique dummy mobile number for tenant admin to avoid conflict
         String mobile = String.format("%010d", Math.abs((tenant.getTenantId() + "admin").hashCode()) % 10000000000L);
@@ -157,15 +182,18 @@ public class TenantServiceImpl implements TenantService {
         log.info("Tenant admin provisioned for tenant: {}", tenant.getTenantId());
     }
 
+    /** Generates a fresh random API key. */
     private String generateApiKey() {
         return "kyc_" + UUID.randomUUID().toString().replace("-", "");
     }
 
+    /** Helper finder or throw. */
     private Tenant getOrThrow(String tenantId) {
         return tenantRepository.findByTenantId(tenantId)
                 .orElseThrow(() -> new RuntimeException("Tenant not found: " + tenantId));
     }
 
+    /** Mapper helper. */
     private TenantDTO mapToDTO(Tenant tenant) {
         return TenantDTO.builder()
                 .id(tenant.getId())

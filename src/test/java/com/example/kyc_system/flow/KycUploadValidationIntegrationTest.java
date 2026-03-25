@@ -3,12 +3,12 @@ package com.example.kyc_system.flow;
 import com.example.kyc_system.BaseIntegrationTest;
 import com.example.kyc_system.entity.KycDocument;
 import com.example.kyc_system.entity.KycRequest;
-import com.example.kyc_system.entity.KycVerificationResult;
+// import com.example.kyc_system.entity.KycVerificationResult;
 import com.example.kyc_system.enums.DocumentType;
 import com.example.kyc_system.enums.KycStatus;
 import com.example.kyc_system.repository.KycDocumentRepository;
 import com.example.kyc_system.repository.KycRequestRepository;
-import com.example.kyc_system.repository.KycVerificationResultRepository;
+// import com.example.kyc_system.repository.KycVerificationResultRepository;
 import com.example.kyc_system.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,7 +16,7 @@ import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MvcResult;
 
-import java.math.BigDecimal;
+// import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -79,8 +79,8 @@ public class KycUploadValidationIntegrationTest extends BaseIntegrationTest {
         @Autowired
         private KycDocumentRepository kycDocumentRepository;
 
-        @Autowired
-        private KycVerificationResultRepository kycVerificationResultRepository;
+        // @Autowired
+        // private KycVerificationResultRepository kycVerificationResultRepository;
 
         @Autowired
         private UserRepository userRepository;

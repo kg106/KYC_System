@@ -16,22 +16,43 @@ import java.util.List;
 @ConfigurationProperties(prefix = "kyc")
 public class KycProperties {
 
+    /**
+     * Storage configuration settings.
+     */
     private Storage storage = new Storage();
+
+    /**
+     * File upload configuration settings.
+     */
     private File file = new File();
 
-    /** Storage configuration (e.g., base path for file storage). */
+    /**
+     * Inner class for storage related properties (e.g., base path for file storage).
+     */
     @Setter
     @Getter
     public static class Storage {
+        /**
+         * Base directory path where KYC documents are stored.
+         */
         private String basePath;
 
     }
 
-    /** File upload constraints (max size, allowed MIME types). */
+    /**
+     * Inner class for file upload constraints (max size, allowed MIME types).
+     */
     @Setter
     @Getter
     public static class File {
+        /**
+         * Maximum allowed file size (e.g., "5MB").
+         */
         private String maxSize;
+
+        /**
+         * List of allowed MIME types for document uploads.
+         */
         private List<String> allowedTypes;
 
     }

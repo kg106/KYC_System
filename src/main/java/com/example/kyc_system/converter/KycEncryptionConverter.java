@@ -11,11 +11,9 @@ import lombok.extern.slf4j.Slf4j;
  * JPA AttributeConverter that automatically encrypts/decrypts sensitive string
  * fields
  * (e.g., document numbers) when writing to and reading from the database.
- * Used via @Convert annotation on entity fields like
- * KycDocument.documentNumber.
+ * Used via @Convert annotation on entity fields like KycDocument.documentNumber.
  *
- * @Lazy on EncryptionUtil avoids circular dependency during Spring context
- *       initialization.
+ * @Lazy on EncryptionUtil avoids circular dependency during Spring context initialization.
  */
 @Component
 @Converter
@@ -39,8 +37,7 @@ public class KycEncryptionConverter implements AttributeConverter<String, String
     }
 
     /**
-     * Decrypts the value when reading from the database. Falls back to raw value on
-     * error (for legacy plain text data).
+     * Decrypts the value when reading from the database. Falls back to raw value on error (for legacy plain text data).
      */
     @Override
     public String convertToEntityAttribute(String dbData) {

@@ -11,6 +11,12 @@ public interface TenantRepository extends JpaRepository<Tenant, Long> {
 
     Optional<Tenant> findByTenantId(String tenantId);
 
+    /**
+     * Finds a tenant by its assigned API key.
+     *
+     * @param apiKey the tenant's API key
+     * @return an Optional containing the matching tenant
+     */
     Optional<Tenant> findByApiKey(String apiKey);
 
     boolean existsByTenantId(String tenantId);

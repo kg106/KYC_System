@@ -22,8 +22,7 @@ import java.util.Map;
 
 /**
  * Servlet filter that resolves and validates the tenant for every request.
- * Runs AFTER JwtAuthenticationFilter (Order 3), so authentication is already
- * available.
+ * Runs AFTER JwtAuthenticationFilter (Order 3), so authentication is already available.
  *
  * Tenant resolution priority:
  * 1. JWT claim "tenantId" (from authenticated user's token)
@@ -31,8 +30,7 @@ import java.util.Map;
  * 3. X-API-Key header (looks up tenant by API key in the database)
  *
  * Super admins bypass tenant scoping entirely.
- * Always clears TenantContext in the finally block to prevent thread pool
- * leaks.
+ * Always clears TenantContext in the finally block to prevent thread pool leaks.
  */
 @Component
 @Order(3) // Runs after JwtAuthenticationFilter

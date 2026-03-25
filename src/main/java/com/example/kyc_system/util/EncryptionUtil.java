@@ -10,6 +10,13 @@ import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
+/**
+ * Utility for AES-256 encryption and decryption of sensitive strings.
+ * Uses CBC mode with PKCS5 padding and a fixed IV for deterministic behavior
+ * (necessary for consistent indexing/searching of encrypted fields).
+ *
+ * The secret key is injected from application properties.
+ */
 @Component
 @Slf4j
 public class EncryptionUtil {
@@ -21,6 +28,12 @@ public class EncryptionUtil {
     @Value("${app.encryption-secret}")
     private String secretKey;
 
+    /**
+     * Encrypts a plain-text string using AES-256 CBC.
+     *
+     * @param strToEncrypt the raw string to protect
+     * @return Base64 encoded ciphertext
+     */
     public String encrypt(String strToEncrypt) {
         try {
             Cipher cipher = Cipher.getInstance(ALGORITHM);
@@ -34,6 +47,12 @@ public class EncryptionUtil {
         }
     }
 
+    /**
+     * Decrypts a Base64 encoded ciphertext back to plain-text.
+     *
+     * @param strToDecrypt the Base64 ciphertext
+     * @return the original plain-text string
+     */
     public String decrypt(String strToDecrypt) {
         try {
             Cipher cipher = Cipher.getInstance(ALGORITHM);

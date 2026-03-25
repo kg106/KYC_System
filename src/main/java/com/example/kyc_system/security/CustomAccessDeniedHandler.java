@@ -24,15 +24,25 @@ import java.util.Map;
 @Slf4j
 public class CustomAccessDeniedHandler implements AccessDeniedHandler {
 
+    /**
+     * Handles an access denied failure by returning a structured JSON response.
+     *
+     * @param request the request that resulted in an AccessDeniedException
+     * @param response the response so that a status code and error message can be sent
+     * @param accessDeniedException the exception that caused the invocation
+     * @throws IOException in case of I/O errors
+     */
     @Override
     public void handle(HttpServletRequest request, HttpServletResponse response,
             AccessDeniedException accessDeniedException) throws IOException {
 
-        log.warn("Forbidden access attempt: path={}, message={}", request.getServletPath(),
-                accessDeniedException.getMessage());
+        log.warn("Forbidden access attempt: path={}, message={}", request.getServletPath(), accessDeniedException.getMessage());
+        
+        // Set response status and content type
         response.setStatus(HttpStatus.FORBIDDEN.value());
         response.setContentType("application/json");
 
+        // Construct error response body
         Map<String, Object> body = new HashMap<>();
         body.put("timestamp", LocalDateTime.now().toString());
         body.put("status", HttpStatus.FORBIDDEN.value());
@@ -40,6 +50,7 @@ public class CustomAccessDeniedHandler implements AccessDeniedHandler {
         body.put("message", "You don't have permission to access this resource");
         body.put("path", request.getServletPath());
 
+        // Write JSON response
         new ObjectMapper().writeValue(response.getOutputStream(), body);
     }
 }

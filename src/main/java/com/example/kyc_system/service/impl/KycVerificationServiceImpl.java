@@ -1,15 +1,22 @@
-package com.example.kyc_system.service;
+package com.example.kyc_system.service.impl;
 
 import com.example.kyc_system.entity.*;
 import com.example.kyc_system.enums.KycStatus;
 import com.example.kyc_system.repository.KycRequestRepository;
 import com.example.kyc_system.repository.KycVerificationResultRepository;
+import com.example.kyc_system.service.KycVerificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 
+/**
+ * Implementation of KycVerificationService.
+ * Compares user-provided profile data with OCR-extracted data from documents.
+ * Uses Levenshtein distance for fuzzy name matching (0.75 threshold).
+ * Matches DOB and normalized document numbers exactly.
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -18,6 +25,14 @@ public class KycVerificationServiceImpl implements KycVerificationService {
         private final KycVerificationResultRepository repository;
         private final KycRequestRepository requestRepository;
 
+        /**
+         * Performs verification by comparing User profile data with Extraction results.
+         * Saves a new KycVerificationResult entity with the outcome.
+         *
+         * @param requestId ID of the KYC request
+         * @param extractedData data extracted from doc via OCR
+         * @return saved verification result
+         */
         @Override
         public KycVerificationResult verifyAndSave(Long requestId, KycExtractedData extractedData) {
 
@@ -31,7 +46,7 @@ public class KycVerificationServiceImpl implements KycVerificationService {
                                 : "";
 
                 double nameScore = similarity(userName, extractedName);
-                boolean nameMatch = nameScore >= 0.75; // More lenient for middle initials
+                boolean nameMatch = nameScore >= 0.75; // More lenient for middle initials/minor OCR errors
                 boolean dobMatch = user.getDob() != null && user.getDob().equals(extractedData.getExtractedDob());
 
                 String storedDoc = extractedData.getKycDocument().getDocumentNumber();
@@ -69,12 +84,14 @@ public class KycVerificationServiceImpl implements KycVerificationService {
                 return saved;
         }
 
+        /** Normalizes document numbers for comparison (removes spaces/dashes). */
         private String normalize(String s) {
                 if (s == null)
                         return null;
                 return s.replaceAll("[^A-Z0-9]", ""); // Keep only alphanumeric
         }
 
+        /** Calculates similarity score [0-1] between two strings. */
         private double similarity(String s1, String s2) {
                 if (s1 == null || s2 == null)
                         return 0;
@@ -89,6 +106,7 @@ public class KycVerificationServiceImpl implements KycVerificationService {
                 return 1.0 - ((double) distance / maxLength);
         }
 
+        /** Standard Levenshtein Distance algorithm implementation. */
         private int getLevenshteinDistance(String s1, String s2) {
                 int[][] dp = new int[s1.length() + 1][s2.length() + 1];
 

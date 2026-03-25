@@ -19,13 +19,18 @@ import com.example.kyc_system.service.RefreshTokenService;
 import com.example.kyc_system.util.CookieUtil;
 import io.swagger.v3.oas.annotations.tags.*;
 
-import com.example.kyc_system.service.*;
-import io.swagger.v3.oas.annotations.*;
-import jakarta.validation.*;
 import com.example.kyc_system.dto.*;
+import com.example.kyc_system.service.TokenBlacklistService;
+import io.swagger.v3.oas.annotations.Operation;
+import jakarta.validation.Valid;
 import jakarta.servlet.http.*;
 import org.springframework.util.*;
 
+/**
+ * Authentication Controller.
+ * Provides endpoints for user registration, login, logout, and password management.
+ * Integrated with JWT and Refresh Token mechanisms.
+ */
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
@@ -39,7 +44,14 @@ public class AuthController {
     private final CookieUtil cookieUtil;
     private final TokenBlacklistService tokenBlacklistService;
 
-    // Build Login REST API
+    /**
+     * Authenticates a user and returns combined JWT and Refresh tokens.
+     * Sets the Refresh Token as a secure HttpOnly cookie.
+     *
+     * @param loginDTO credentials (email, password)
+     * @param response the HTTP response to attach the cookie to
+     * @return a response containing the JWT and refresh token
+     */
     @PostMapping("/login")
     @Operation(summary = "User Login", description = "Authenticates user and returns a JWT access token")
     public ResponseEntity<JwtAuthResponse> login(@Valid @RequestBody LoginDTO loginDTO,
@@ -58,7 +70,12 @@ public class AuthController {
         return ResponseEntity.ok(jwtAuthResponse);
     }
 
-    // Build Register REST API
+    /**
+     * Registers a new user account in the system.
+     *
+     * @param userDTO basic user profile information
+     * @return the created user profile
+     */
     @PostMapping("/register")
     @Operation(summary = "User Registration", description = "Creates a new user account")
     public ResponseEntity<UserDTO> register(@Valid @RequestBody UserDTO userDTO) {
@@ -67,6 +84,13 @@ public class AuthController {
         return new ResponseEntity<>(savedUser, HttpStatus.CREATED);
     }
 
+    /**
+     * Step 1: Initiates a password reset by generating a 6-character numeric token.
+     * The token is sent to the user's registered email address.
+     *
+     * @param requestDTO containing the user's email
+     * @return success message
+     */
     @PostMapping("/forgot-password")
     @Operation(summary = "Forgot Password (Step 1)", description = "Enter your email to receive a 6-character reset token. This token will be sent to your registered email address and is valid for 15 minutes.")
     public ResponseEntity<String> generateResetToken(
@@ -75,6 +99,12 @@ public class AuthController {
         return ResponseEntity.ok(message);
     }
 
+    /**
+     * Step 2: Finalizes password reset using the email token and a new password.
+     *
+     * @param resetDTO containing the token and new password
+     * @return success message
+     */
     @PostMapping("/change-password")
     @Operation(summary = "Change Password (Step 2)", description = "Use the token received in your email to set a new password. Make sure the 'newPassword' and 'confirmPassword' fields match exactly.")
     public ResponseEntity<String> resetPassword(
@@ -83,6 +113,14 @@ public class AuthController {
         return ResponseEntity.ok("Password successfully reset");
     }
 
+    /**
+     * Uses a valid Refresh Token (from cookie) to issue a new JWT and Refresh Token.
+     * Implements token rotation for enhanced security.
+     *
+     * @param refreshToken the rotation token from the HTTP cookie
+     * @param response the HTTP response to attach the new cookie to
+     * @return new set of credentials
+     */
     @PostMapping("/refresh")
     @Operation(summary = "Refresh Token", description = "Uses the HttpOnly refresh token cookie to get a new access token")
     public ResponseEntity<JwtAuthResponse> refresh(
@@ -102,6 +140,17 @@ public class AuthController {
         }
     }
 
+    /**
+     * Logs out a user by:
+     * 1. Blacklisting the current Access Token.
+     * 2. Revoking the entire Refresh Token family.
+     * 3. Clearing the Refresh Token cookie.
+     *
+     * @param refreshToken the current rotation token
+     * @param request the HTTP request (for Authorization header)
+     * @param response the HTTP response (to clear cookie)
+     * @return logout confirmation
+     */
     @PostMapping("/logout")
     @Operation(summary = "User Logout", description = "Revokes the refresh token, blacklists the access token, and clears the cookie")
     public ResponseEntity<String> logout(@CookieValue(name = "refreshToken", required = false) String refreshToken,

@@ -15,6 +15,16 @@ public class SecurityService {
 
     private final UserService userService;
 
+    /**
+     * Checks if the currently authenticated user can access data for the specified userId.
+     * Access is granted if:
+     * 1. The user is a SUPER_ADMIN (global access).
+     * 2. The user is a TENANT_ADMIN or ADMIN and the target user belongs to the same tenant.
+     * 3. The user is a regular user and is accessing their own data.
+     *
+     * @param userId the ID of the user being accessed
+     * @return true if access is granted, false otherwise
+     */
     public boolean canAccessUser(Long userId) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
@@ -60,10 +70,23 @@ public class SecurityService {
         return result;
     }
 
+    /**
+     * Checks if the authentication object contains a specific role.
+     *
+     * @param auth the authentication object
+     * @param role the role name to check (e.g., "ROLE_ADMIN")
+     * @return true if the role is present, false otherwise
+     */
     private boolean hasRole(Authentication auth, String role) {
         return auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals(role));
     }
 
+    /**
+     * Safely retrieves the tenantId from the authentication details map.
+     *
+     * @param auth the authentication object
+     * @return the tenantId string or null if not found
+     */
     @SuppressWarnings("unchecked")
     private String getTenantId(Authentication auth) {
         if (auth.getDetails() instanceof java.util.Map) {
@@ -72,6 +95,13 @@ public class SecurityService {
         return null;
     }
 
+    /**
+     * Checks if the currently authenticated user is the user specified by userId.
+     * This is stricter than canAccessUser as it doesn't automatically grant access to admins.
+     *
+     * @param userId the ID of the user to check against
+     * @return true if the current user is the target user, false otherwise
+     */
     public boolean isSelf(Long userId) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {

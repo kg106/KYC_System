@@ -21,7 +21,7 @@ import java.util.Collections;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.anyString;
+// import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 @DisplayName("JwtAuthenticationFilter Unit Tests")
@@ -54,6 +54,7 @@ class JwtAuthenticationFilterTest {
         SecurityContextHolder.clearContext();
     }
 
+    @SuppressWarnings("unchecked")
     @Test
     @DisplayName("Should authenticate user with valid token")
     void doFilterInternal_ValidToken_Authenticates() throws Exception {

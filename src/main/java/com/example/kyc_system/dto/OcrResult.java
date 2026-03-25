@@ -4,6 +4,10 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 import java.util.Map;
 
+/**
+ * Result of an OCR (Optical Character Recognition) process.
+ * Contains extracted text fields from a document image.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

@@ -23,6 +23,12 @@ public class KycQueueService {
     private final BlockingQueue<Long> queue = new LinkedBlockingQueue<>();
 
     /** Adds a KYC request ID to the queue (non-blocking). */
+    /**
+     * Pushes a KYC request ID onto the processing queue.
+     * This is a non-blocking operation (uses offer()).
+     *
+     * @param requestId the ID of the request to process
+     */
     public void push(Long requestId) {
         log.info("Pushing request to queue: requestId={}", requestId);
         queue.offer(requestId);

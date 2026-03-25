@@ -4,6 +4,7 @@ import com.example.kyc_system.entity.KycRequest;
 import com.example.kyc_system.enums.KycStatus;
 import com.example.kyc_system.repository.KycRequestRepository;
 
+import com.example.kyc_system.service.impl.KycOrchestrationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -27,7 +28,7 @@ import java.util.List;
  *
  * This is idempotent: even if a request is already in the queue, the CAS
  * in
- * {@link com.example.kyc_system.service.KycOrchestrationService#processAsync}
+ * {@link KycOrchestrationService#processAsync}
  * guarantees only one execution proceeds.
  */
 @Component

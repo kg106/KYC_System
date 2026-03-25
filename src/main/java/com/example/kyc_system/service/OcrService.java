@@ -10,5 +10,12 @@ import java.io.File;
  * OCR.
  */
 public interface OcrService {
+    /**
+     * Extracts text fields from a document image file.
+     *
+     * @param file the image file (JPG, PNG, PDF page)
+     * @param type the document type (to optimize extraction zones)
+     * @return OcrResult containing extracted fields
+     */
     OcrResult extract(File file, DocumentType type);
 }

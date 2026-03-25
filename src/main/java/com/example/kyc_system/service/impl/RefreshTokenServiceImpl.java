@@ -17,6 +17,14 @@ import java.time.Duration;
 import com.example.kyc_system.repository.*;
 import java.util.*;
 
+/**
+ * Implementation of RefreshTokenService.
+ * Manages "Refresh Token Families" in Redis/Valkey for secure session management.
+ * Features:
+ * - Token Family Rotation: Issuing a new refresh token with every use.
+ * - Reuse Detection: Revoking an entire family if an old token is presented.
+ * - Multi-device support: Tracking multiple families per user email.
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -25,15 +33,23 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
     private final StringRedisTemplate redisTemplate;
     private final UserService userService;
     private final JwtTokenProvider jwtTokenProvider;
-    // Add to existing fields
     private final UserRepository userRepository;
 
     @Value("${app.jwt-refresh-expiration-milliseconds}")
     private long refreshExpirationMs;
 
+    /** Prefix for individual token family keys in Redis. */
     private static final String RT_FAMILY_PREFIX = "RT_FAMILY:";
+    /** Prefix for the set of family IDs belonging to a user. */
     private static final String USER_FAMILIES_PREFIX = "USER_FAMILIES:";
 
+    /**
+     * Initializes a new refresh token family for a user.
+     * Uses TenantContext-scoped UserService for info.
+     *
+     * @param userId user ID
+     * @return raw token string (familyId:tokenValue)
+     */
     @Override
     public String createRefreshToken(Long userId) {
         UserDTO user = userService.getUserById(userId);
@@ -56,12 +72,16 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
         return familyId + ":" + tokenValue;
     }
 
-    // In RefreshTokenServiceImpl — add this method
+    /**
+     * Creates a refresh token family directly from UserRepository.
+     * Used during initial login where TenantContext may not be initialized yet.
+     *
+     * @param userId user ID
+     * @return raw token string
+     */
     @Override
     public String createRefreshTokenDirect(Long userId) {
-        // Bypasses UserService.getUserById() tenant check
-        // Used during login where TenantContext may not be set
-        User user = userRepository.findById(userId) // ← inject UserRepository
+        User user = userRepository.findById(userId)
                 .orElseThrow(() -> {
                     log.warn("Failed to create refresh token: User {} not found", userId);
                     return new RuntimeException("User not found");
@@ -83,6 +103,13 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
         return familyId + ":" + tokenValue;
     }
 
+    /**
+     * Processes a refresh request by presenting the current refresh token.
+     * Detects reuse and rotates the token upon success.
+     *
+     * @param rawToken the refresh token presented by the client
+     * @return new access and refresh tokens
+     */
     @Override
     public JwtAuthResponse processRefreshToken(String rawToken) {
         if (rawToken == null || !rawToken.contains(":")) {
@@ -121,8 +148,7 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
         String newTokenValue = UUID.randomUUID().toString();
         String newRedisValue = email + ":" + newTokenValue;
 
-        // Reset expiration on rotation (optional, but standard to keep session alive)
-        // Alternatively, keep the original TTL. We'll set a new TTL for simplicity.
+        // Reset expiration on rotation (standard behavior to extend session)
         redisTemplate.opsForValue().set(redisKey, newRedisValue, Duration.ofMillis(refreshExpirationMs));
 
         // Generate new Access Token
@@ -137,6 +163,11 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
         return response;
     }
 
+    /**
+     * Revokes a specific refresh token family, logging out that specific session.
+     *
+     * @param familyId individual family ID
+     */
     @Override
     public void revokeFamily(String familyId) {
         String redisKey = RT_FAMILY_PREFIX + familyId;
@@ -150,12 +181,14 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
         }
     }
 
+    /**
+     * Revokes all refresh token families for a user, effectively logging them out everywhere.
+     * Used after password resets or administrative lockouts.
+     *
+     * @param userId user ID
+     */
     @Override
     public void revokeAllForUser(Long userId) {
-        // UserDTO user = userService.getUserById(userId);
-        // Use userRepository.findById() directly — bypasses tenant-scoped
-        // UserService.getUserById()
-        // This is called from password reset which has no TenantContext set
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         String email = user.getEmail();

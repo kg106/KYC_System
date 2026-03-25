@@ -5,7 +5,6 @@ import com.example.kyc_system.dto.JwtAuthResponse;
 public interface RefreshTokenService {
     String createRefreshToken(Long userId);
 
-    // In RefreshTokenService interface — add this method
     String createRefreshTokenDirect(Long userId);
 
     JwtAuthResponse processRefreshToken(String rawToken);
