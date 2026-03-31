@@ -65,12 +65,10 @@ public class KycController {
             @Parameter(description = "KYC Document File", required = true) @RequestParam("file") MultipartFile file,
             @Parameter(description = "Document Number", required = true) @RequestParam("documentNumber") String documentNumber) {
         try {
-            log.info("KYC upload: userId={}, docType={}, fileName={}", userId, documentType,
-                    file.getOriginalFilename());
+            log.info("KYC upload: userId={}, docType={}, fileName={}", userId, documentType, file.getOriginalFilename());
             Long requestId = orchestrationService.submitKyc(userId, documentType, file, documentNumber);
             log.info("KYC upload successful: userId={}, requestId={}", userId, requestId);
-            return ResponseEntity.accepted()
-                    .body(Map.of("message", "KYC request submitted successfully", "requestId", requestId));
+            return ResponseEntity.accepted().body(Map.of("message", "KYC request submitted successfully", "requestId", requestId));
         } catch (Exception e) {
             log.warn("KYC upload failed: userId={}, error={}", userId, e.getMessage());
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));

@@ -10,8 +10,7 @@ import java.util.List;
 
 public class UserSpecification {
 
-    public static Specification<User> buildSpecification(UserSearchDTO searchDTO, String tenantId,
-            boolean isSuperAdmin) {
+    public static Specification<User> buildSpecification(UserSearchDTO searchDTO, String tenantId, boolean isSuperAdmin) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 

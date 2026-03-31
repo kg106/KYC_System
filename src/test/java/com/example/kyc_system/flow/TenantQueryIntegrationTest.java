@@ -247,7 +247,6 @@ public class TenantQueryIntegrationTest extends BaseIntegrationTest {
                                 .andExpect(content().string(
                                                 org.hamcrest.Matchers.containsString("Report triggered for range:")));
         }
-
         @Test
         void admin_triggerReport_withCustomDateRange_returns200() throws Exception {
                 mockMvc.perform(post("/api/kyc/report")
@@ -256,7 +255,7 @@ public class TenantQueryIntegrationTest extends BaseIntegrationTest {
                                 .param("dateFrom", "2025-01-01")
                                 .param("dateTo", "2025-01-31"))
                                 .andExpect(status().isOk())
-                                .andExpect(content().string("Report triggered for range: 2025-01-01 to 2025-01-31"));
+                                .andExpect(content().string("Report triggered for range: 2025-01-01 to 2025-01-31. Scope: Tenant default. Delivery: Default Recipients"));
         }
 
         @Test

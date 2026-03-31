@@ -13,6 +13,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
@@ -52,8 +54,7 @@ public class KycOrchestrationService {
         public Long submitKyc(Long userId, DocumentType documentType, MultipartFile file, String documentNumber) {
                 fileValidator.validate(file);
                 if (documentService.isVerified(userId, documentType, documentNumber)) {
-                        throw new RuntimeException("Your " + documentType
-                                        + " is already verified. No further action is required.");
+                        throw new RuntimeException("Your " + documentType + " is already verified. No further action is required.");
                 }
 
                 // Synchronous Steps:
@@ -61,15 +62,23 @@ public class KycOrchestrationService {
                 KycRequest request = requestService.createOrReuse(userId, documentType.name());
 
                 // 2. Save File (I/O)
-                log.info("Saving KYC document: userId={}, requestId={}, docType={}", userId, request.getId(),
-                                documentType);
+                log.info("Saving KYC document: userId={}, requestId={}, docType={}", userId, request.getId(), documentType);
                 documentService.save(request.getId(), documentType, file, documentNumber);
 
                 // 3. Push to Queue
-                log.info("Queueing KYC request for async processing: requestId={}", request.getId());
-                queueService.push(request.getId());
+                Long requestId = request.getId();
 
-                return request.getId();
+                // ✅ Push ONLY after the full transaction commits
+                TransactionSynchronizationManager.registerSynchronization(
+                        new TransactionSynchronization() {
+                                @Override
+                                public void afterCommit() {
+                                        queueService.push(requestId);
+                                }
+                        }
+                );
+
+                return requestId;
         }
 
         /**
@@ -80,7 +89,8 @@ public class KycOrchestrationService {
          */
         public void processAsync(Long requestId) {
                 // 1. Atomic Check-And-Set (CAS) - Short Transaction
-                int rows = transactionTemplate.execute(status -> kycRequestRepository.updateStatusIfPending(requestId,
+            //noinspection DataFlowIssue
+            int rows = transactionTemplate.execute(status -> kycRequestRepository.updateStatusIfPending(requestId,
                                 KycStatus.PROCESSING.name(), KycStatus.SUBMITTED.name()));
 
                 if (rows == 0) {
@@ -107,26 +117,22 @@ public class KycOrchestrationService {
                 try {
                         // 3. Heavy OCR - NO TRANSACTION HERE
                         // This prevents holding a DB connection during slow I/O
-                        OcrResult ocrResult = ocrService.extract(new File(processingData.docPath),
-                                        processingData.docType);
+                        OcrResult ocrResult = ocrService.extract(new File(processingData.docPath), processingData.docType);
 
                         // 4. Save & Verify - Short Transaction
                         transactionTemplate.execute(status -> {
                                 KycExtractedData extracted = extractionService.save(processingData.docId, ocrResult);
-                                KycVerificationResult result = verificationService.verifyAndSave(processingData.reqId,
-                                                extracted);
+                                KycVerificationResult result = verificationService.verifyAndSave(processingData.reqId, extracted);
 
                                 // Update Request
                                 KycRequest request = kycRequestRepository.findById(processingData.reqId).orElseThrow();
                                 request.setFailureReason(result.getDecisionReason());
-                                requestService.updateStatus(request.getId(),
-                                                KycStatus.valueOf(result.getFinalStatus()));
+                                requestService.updateStatus(request.getId(), KycStatus.valueOf(result.getFinalStatus()));
                                 return null;
                         });
 
                 } catch (Throwable t) {
-                        log.error("Serious error during OCR processing for request {}: {}", requestId, t.getMessage(),
-                                        t);
+                        log.error("Serious error during OCR processing for request {}: {}", requestId, t.getMessage(), t);
                         // Handle errors in a separate transaction
                         transactionTemplate.execute(status -> {
                                 KycRequest request = kycRequestRepository.findById(requestId).orElseThrow();

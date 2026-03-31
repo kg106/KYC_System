@@ -50,3 +50,9 @@ loki-data/
 prometheus-data/
 grafana-data/
 promtail/positions.yaml
+
+#
+peer_repos/
+
+backups/
+backup_db.sh

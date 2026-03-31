@@ -1,5 +1,6 @@
 package com.example.kyc_system.service.impl;
 
+import com.example.kyc_system.dto.UserDTO;
 import com.example.kyc_system.entity.KycRequest;
 import com.example.kyc_system.entity.Tenant;
 import com.example.kyc_system.entity.User;
@@ -7,6 +8,7 @@ import com.example.kyc_system.enums.KycStatus;
 import com.example.kyc_system.repository.KycRequestRepository;
 import com.example.kyc_system.repository.TenantRepository;
 
+import com.example.kyc_system.repository.UserRepository;
 import com.example.kyc_system.service.AuditLogService;
 import com.example.kyc_system.service.KycRequestService;
 import com.example.kyc_system.service.UserService;
@@ -44,6 +46,7 @@ public class KycRequestServiceImpl implements KycRequestService {
     private final UserService userService;
     private final AuditLogService auditLogService;
     private final TenantRepository tenantRepository;
+    private final UserRepository userRepository;
 
     /** Helper to get current principal name from SecurityContext. */
     private String getCurrentUser() {
@@ -66,39 +69,29 @@ public class KycRequestServiceImpl implements KycRequestService {
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public KycRequest createOrReuse(Long userId, String documentType) {
-        String tenantId = TenantContext.getTenant();
+        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found with User ID: " + userId));
+        String tenantId = user.getTenantId();
         LocalDateTime startOfDay = LocalDateTime.now().with(LocalTime.MIN);
 
         // Use tenant-specific daily limit
-        Tenant tenant = tenantRepository.findByTenantId(tenantId)
-                .orElseThrow(() -> new RuntimeException("Tenant not found"));
+        Tenant tenant = tenantRepository.findByTenantId(tenantId).orElseThrow(() -> new RuntimeException("Tenant not found"));
 
-        long totalAttemptsToday = repository.sumAttemptNumberByUserIdAndTenantIdAndSubmittedAtAfter(
-                userId, tenantId, startOfDay);
+        long totalAttemptsToday = repository.sumAttemptNumberByUserIdAndTenantIdAndSubmittedAtAfter(userId, tenantId, startOfDay);
 
         if (totalAttemptsToday >= tenant.getMaxDailyAttempts()) {
-            log.warn("Daily KYC limit reached: userId={}, tenantId={}, attempts={}", userId, tenantId,
-                    totalAttemptsToday);
-            throw new RuntimeException(
-                    "Daily KYC attempt limit reached ("
-                            + tenant.getMaxDailyAttempts()
-                            + "). Please try again tomorrow.");
+            log.warn("Daily KYC limit reached: userId={}, tenantId={}, attempts={}", userId, tenantId, totalAttemptsToday);
+            throw new RuntimeException("Daily KYC attempt limit reached (" + tenant.getMaxDailyAttempts() + "). Please try again tomorrow.");
         }
 
-        Optional<KycRequest> latestRequest = repository
-                .findTopByUserIdAndDocumentTypeAndTenantIdOrderByCreatedAtDesc(
-                        userId, documentType, tenantId);
+        Optional<KycRequest> latestRequest = repository.findTopByUserIdAndDocumentTypeAndTenantIdOrderByCreatedAtDesc(userId, documentType, tenantId);
 
         if (latestRequest.isPresent()) {
             KycRequest request = latestRequest.get();
             String status = request.getStatus();
 
             // Prevent duplicate active requests for the same document type
-            if (status.equals(KycStatus.PENDING.name()) ||
-                    status.equals(KycStatus.SUBMITTED.name()) ||
-                    status.equals(KycStatus.PROCESSING.name())) {
-                throw new IllegalStateException(
-                        "Only one KYC request for " + documentType + " can be processed at a time.");
+            if (status.equals(KycStatus.PENDING.name()) || status.equals(KycStatus.SUBMITTED.name()) || status.equals(KycStatus.PROCESSING.name())) {
+                throw new IllegalStateException("Only one KYC request for " + documentType + " can be processed at a time.");
             }
 
             // Reuse FAILED request as a new attempt
@@ -106,18 +99,15 @@ public class KycRequestServiceImpl implements KycRequestService {
                 request.setAttemptNumber(request.getAttemptNumber() + 1);
                 request.setStatus(KycStatus.SUBMITTED.name());
                 request.setSubmittedAt(LocalDateTime.now());
-                auditLogService.logAction("SUBMIT", "KycRequest",
-                        request.getId(),
-                        "Re-submitted KYC request for " + documentType,
+                auditLogService.logAction("SUBMIT", "KycRequest", request.getId(), "Re-submitted KYC request for " + documentType,
                         getCurrentUser());
-                log.info("KYC request re-submitted: requestId={}, userId={}, docType={}", request.getId(), userId,
-                        documentType);
+                log.info("KYC request re-submitted: requestId={}, userId={}, docType={}", request.getId(), userId, documentType);
                 return request;
             }
         }
 
         // Create fresh request
-        User user = userService.getActiveUser(userId);
+//        User user = userService.getActiveUser(userId);
         KycRequest newRequest = new KycRequest();
         newRequest.setUser(user);
         newRequest.setDocumentType(documentType);
@@ -128,16 +118,12 @@ public class KycRequestServiceImpl implements KycRequestService {
 
         try {
             KycRequest saved = repository.save(newRequest);
-            auditLogService.logAction("SUBMIT", "KycRequest",
-                    saved.getId(),
-                    "Submitted new KYC request for " + documentType,
+            auditLogService.logAction("SUBMIT", "KycRequest", saved.getId(), "Submitted new KYC request for " + documentType,
                     getCurrentUser());
-            log.info("New KYC request created: requestId={}, userId={}, docType={}, tenantId={}", saved.getId(), userId,
-                    documentType, tenantId);
+            log.info("New KYC request created: requestId={}, userId={}, docType={}, tenantId={}", saved.getId(), userId, documentType, tenantId);
             return saved;
         } catch (DataIntegrityViolationException ex) {
-            throw new IllegalStateException(
-                    "Only one KYC request for " + documentType + " can be processed at a time.");
+            throw new IllegalStateException("Only one KYC request for " + documentType + " can be processed at a time.");
         }
     }
 
@@ -156,8 +142,7 @@ public class KycRequestServiceImpl implements KycRequestService {
             throw new RuntimeException("KYC request not found with id: " + requestId);
         }
 
-        auditLogService.logAction("UPDATE_STATUS", "KycRequest", requestId,
-                "Updated status to " + status, getCurrentUser());
+        auditLogService.logAction("UPDATE_STATUS", "KycRequest", requestId, "Updated status to " + status, getCurrentUser());
         log.info("KYC status updated: requestId={}, newStatus={}", requestId, status);
     }
 

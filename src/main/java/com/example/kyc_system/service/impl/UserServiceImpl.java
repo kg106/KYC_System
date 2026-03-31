@@ -59,12 +59,10 @@ public class UserServiceImpl implements UserService {
     @Override
     public User getActiveUser(Long userId) {
         if (TenantContext.isSuperAdmin()) {
-            return userRepository.findById(userId)
-                    .orElseThrow(() -> new RuntimeException("User not found"));
+            return userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
         }
         String tenantId = TenantContext.getTenant();
-        return userRepository.findByIdAndTenantId(userId, tenantId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        return userRepository.findByIdAndTenantId(userId, tenantId).orElseThrow(() -> new RuntimeException("User not found"));
     }
 
     /**
@@ -85,13 +83,11 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserDTO getUserById(Long id) {
         if (TenantContext.isSuperAdmin()) {
-            User user = userRepository.findById(id)
-                    .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
+            User user = userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found with id: " + id));
             return mapToDTO(user);
         }
         String tenantId = TenantContext.getTenant();
-        User user = userRepository.findByIdAndTenantId(id, tenantId)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
+        User user = userRepository.findByIdAndTenantId(id, tenantId).orElseThrow(() -> new RuntimeException("User not found with id: " + id));
         return mapToDTO(user);
     }
 
@@ -101,13 +97,11 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserDTO getUserByEmail(String email) {
         if (TenantContext.isSuperAdmin()) {
-            User user = userRepository.findByEmail(email)
-                    .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
+            User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found with email: " + email));
             return mapToDTO(user);
         }
         String tenantId = TenantContext.getTenant();
-        User user = userRepository.findByEmailAndTenantId(email, tenantId)
-                .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
+        User user = userRepository.findByEmailAndTenantId(email, tenantId).orElseThrow(() -> new RuntimeException("User not found with email: " + email));
         return mapToDTO(user);
     }
 
@@ -116,8 +110,7 @@ public class UserServiceImpl implements UserService {
      */
     @Override
     public UserDTO getUserByEmailDirect(String email) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
+        User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found with email: " + email));
         return mapToDTO(user);
     }
 
@@ -161,8 +154,7 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public UserDTO updateUser(Long id, UserUpdateDTO userDTO) {
         String tenantId = TenantContext.getTenant();
-        User user = userRepository.findByIdAndTenantId(id, tenantId)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
+        User user = userRepository.findByIdAndTenantId(id, tenantId).orElseThrow(() -> new RuntimeException("User not found with id: " + id));
 
         if (userDTO.getName() != null)
             user.setName(userDTO.getName());
@@ -186,11 +178,9 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public void deleteUser(Long id) {
         String tenantId = TenantContext.getTenant();
-        User user = userRepository.findByIdAndTenantId(id, tenantId)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
+        User user = userRepository.findByIdAndTenantId(id, tenantId).orElseThrow(() -> new RuntimeException("User not found with id: " + id));
 
-        kycRequestRepository.findByUserIdAndTenantId(id, tenantId)
-                .forEach(request -> request.getKycDocuments().forEach(kycDocumentService::deleteDocument));
+        kycRequestRepository.findByUserIdAndTenantId(id, tenantId).forEach(request -> request.getKycDocuments().forEach(kycDocumentService::deleteDocument));
 
         userRepository.deleteById(id);
         log.info("User deleted: id={}, tenantId={}", id, tenantId);
@@ -204,16 +194,13 @@ public class UserServiceImpl implements UserService {
         // This will throw DisabledException automatically (from Fix 1)
         // if the account is inactive — but we add an explicit check
         // BEFORE authenticate() to return a cleaner error message.
-        User user = userRepository.findByEmail(loginDTO.getEmail())
-                .orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
+        User user = userRepository.findByEmail(loginDTO.getEmail()).orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
 
         if (!user.getIsActive()) {
             throw new DisabledException("Account is deactivated. Please contact support.");
         }
 
-        Authentication authentication = authenticationManager
-                .authenticate(new UsernamePasswordAuthenticationToken(loginDTO.getEmail(), loginDTO.getPassword()));
-
+        Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(loginDTO.getEmail(), loginDTO.getPassword()));
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
         log.info("Login successful: email={}, tenantId={}", loginDTO.getEmail(), user.getTenantId());
@@ -228,8 +215,7 @@ public class UserServiceImpl implements UserService {
     public Page<UserDTO> searchUsers(UserSearchDTO searchDTO, Pageable pageable) {
         String tenantId = TenantContext.getTenant();
         boolean isSuperAdmin = TenantContext.isSuperAdmin();
-        return userRepository.findAll(UserSpecification.buildSpecification(searchDTO, tenantId, isSuperAdmin), pageable)
-                .map(this::mapToDTO);
+        return userRepository.findAll(UserSpecification.buildSpecification(searchDTO, tenantId, isSuperAdmin), pageable).map(this::mapToDTO);
     }
 
     /** Internal mapper from entity to DTO. */

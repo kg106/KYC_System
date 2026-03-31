@@ -81,19 +81,16 @@ public class OcrServiceImpl implements OcrService {
 
         String lowerText = text.toLowerCase();
         if (type == DocumentType.PAN) {
-            boolean hasPanKeywords = lowerText.contains("income tax department") ||
-                    lowerText.contains("permanent account number card") ||
+            boolean hasPanKeywords = lowerText.contains("income tax department") || lowerText.contains("permanent account number card") ||
                     lowerText.contains("govt. of india");
 
             if (!hasPanKeywords) {
                 // Check for Aadhaar keywords to give a better error message
                 if (lowerText.contains("authority of india") || lowerText.contains("aadhaar")
                         || lowerText.contains("vid :") || lowerText.contains("government of india")) {
-                    throw new RuntimeException(
-                            "Invalid document: Uploaded document appears to be an Aadhaar card, but PAN was expected.");
+                    throw new RuntimeException("Invalid document: Uploaded document appears to be an Aadhaar card, but PAN was expected.");
                 }
-                throw new RuntimeException(
-                        "Invalid document: Could not verify this is a PAN card. Please ensure the image is clear.");
+                throw new RuntimeException("Invalid document: Could not verify this is a PAN card. Please ensure the image is clear.");
             }
         } else if (type == DocumentType.AADHAAR) {
             boolean hasAadhaarKeywords = lowerText.contains("authority of india") ||
@@ -106,13 +103,10 @@ public class OcrServiceImpl implements OcrService {
 
             if (!hasAadhaarKeywords) {
                 // Check for PAN keywords to give a better error message
-                if (lowerText.contains("income tax department")
-                        || lowerText.contains("permanent account number card")) {
-                    throw new RuntimeException(
-                            "Invalid document: Uploaded document appears to be a PAN card, but Aadhaar was expected.");
+                if (lowerText.contains("income tax department") || lowerText.contains("permanent account number card")) {
+                    throw new RuntimeException("Invalid document: Uploaded document appears to be a PAN card, but Aadhaar was expected.");
                 }
-                throw new RuntimeException(
-                        "Invalid document: Could not verify this is an Aadhaar card. Please ensure the image is clear.");
+                throw new RuntimeException("Invalid document: Could not verify this is an Aadhaar card. Please ensure the image is clear.");
             }
         }
     }

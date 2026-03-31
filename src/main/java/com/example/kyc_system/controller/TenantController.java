@@ -38,8 +38,7 @@ public class TenantController {
      */
     @PostMapping
     @Operation(summary = "Create new tenant", description = "Creates a new tenant and optionally provisions a tenant admin user")
-    public ResponseEntity<TenantDTO> createTenant(
-            @Valid @RequestBody TenantCreateDTO dto) {
+    public ResponseEntity<TenantDTO> createTenant(@Valid @RequestBody TenantCreateDTO dto) {
         log.info("Creating tenant: tenantId={}", dto.getTenantId());
         TenantDTO created = tenantService.createTenant(dto);
         return ResponseEntity
