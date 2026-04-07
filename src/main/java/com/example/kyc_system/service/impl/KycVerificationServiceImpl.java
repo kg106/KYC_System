@@ -1,5 +1,7 @@
 package com.example.kyc_system.service.impl;
 
+import com.example.kyc_system.client.AuthServiceClient;
+import com.example.kyc_system.dto.AuthUserDTO;
 import com.example.kyc_system.entity.*;
 import com.example.kyc_system.enums.KycStatus;
 import com.example.kyc_system.repository.KycRequestRepository;
@@ -10,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 /**
  * Implementation of KycVerificationService.
@@ -24,6 +27,7 @@ public class KycVerificationServiceImpl implements KycVerificationService {
 
         private final KycVerificationResultRepository repository;
         private final KycRequestRepository requestRepository;
+        private final AuthServiceClient authServiceClient;
 
         /**
          * Performs verification by comparing User profile data with Extraction results.
@@ -38,16 +42,30 @@ public class KycVerificationServiceImpl implements KycVerificationService {
 
                 KycRequest request = requestRepository.findById(requestId)
                                 .orElseThrow(() -> new RuntimeException("Request not found"));
-                User user = request.getUser();
+                String userId = request.getUserId().toString();
 
-                String userName = user.getName() != null ? user.getName().toLowerCase() : "";
+                AuthUserDTO user = null;
+                try {
+                        user = authServiceClient.getUserById(userId);
+                } catch (Exception e) {
+                        log.warn("Failed to fetch user data for verification: {}", userId);
+                }
+
+                String userName = user != null && user.getName() != null ? user.getName().toLowerCase() : "";
                 String extractedName = extractedData.getExtractedName() != null
                                 ? extractedData.getExtractedName().toLowerCase()
                                 : "";
 
                 double nameScore = similarity(userName, extractedName);
                 boolean nameMatch = nameScore >= 0.75; // More lenient for middle initials/minor OCR errors
-                boolean dobMatch = user.getDob() != null && user.getDob().equals(extractedData.getExtractedDob());
+
+                // DOB verification: compare user's DOB from Auth Service with extracted DOB from document
+                boolean dobMatch = false;
+                String expectedDob = null;
+                if (user != null && user.getDob() != null) {
+                        expectedDob = user.getDob().toString(); // ISO format: yyyy-MM-dd
+                        dobMatch = expectedDob.equals(extractedData.getExtractedDob());
+                }
 
                 String storedDoc = extractedData.getKycDocument().getDocumentNumber();
                 String storedDocNormalized = normalize(storedDoc);
@@ -57,11 +75,15 @@ public class KycVerificationServiceImpl implements KycVerificationService {
                                 && storedDocNormalized.equalsIgnoreCase(extractedDocNormalized);
 
                 StringBuilder reason = new StringBuilder();
+                if (user == null) {
+                        reason.append("User not found in Auth Service. ");
+                        nameMatch = false;
+                        dobMatch = false;
+                }
                 if (!nameMatch)
                         reason.append(String.format("Name mismatch (score: %.2f%%). ", nameScore * 100));
                 if (!dobMatch)
-                        reason.append(String.format("DOB mismatch (Expected: %s, Found: %s). ", user.getDob(),
-                                        extractedData.getExtractedDob()));
+                        reason.append(String.format("DOB mismatch (Expected: %s, Found: %s). ", expectedDob, extractedData.getExtractedDob()));
                 if (!docMatch)
                         reason.append(String.format("Doc Number mismatch (Expected: %s, Found: %s). ", storedDoc,
                                         extractedData.getExtractedDocumentNumber()));

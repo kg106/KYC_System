@@ -2,10 +2,9 @@ package com.example.kyc_system.repository.specification;
 
 import com.example.kyc_system.dto.KycRequestSearchDTO;
 import com.example.kyc_system.entity.KycRequest;
-import com.example.kyc_system.entity.User;
-import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.jpa.domain.Specification;
+import java.util.UUID;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -19,17 +18,16 @@ public class KycRequestSpecification {
 
             // Multi-tenancy scoping
             if (!isSuperAdmin && tenantId != null && !tenantId.isBlank()) {
-                predicates.add(cb.equal(root.get("tenantId"), tenantId));
+                predicates.add(cb.equal(root.get("tenantId"), UUID.fromString(tenantId)));
             }
 
             if (searchDTO.getUserId() != null) {
-                predicates.add(cb.equal(root.get("user").get("id"), searchDTO.getUserId()));
+                predicates.add(cb.equal(root.get("userId"), UUID.fromString(searchDTO.getUserId())));
             }
 
             if (searchDTO.getUserName() != null && !searchDTO.getUserName().isEmpty()) {
-                Join<KycRequest, User> userJoin = root.join("user");
-                predicates.add(
-                        cb.like(cb.lower(userJoin.get("name")), "%" + searchDTO.getUserName().toLowerCase() + "%"));
+                // userName search is disabled in KYC service since User was removed.
+                // It should be fetched/filtered at the API Gateway or Auth Service layer.
             }
 
             if (searchDTO.getStatus() != null && !searchDTO.getStatus().isEmpty()) {

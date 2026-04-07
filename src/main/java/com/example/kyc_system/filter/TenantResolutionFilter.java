@@ -1,8 +1,6 @@
 package com.example.kyc_system.filter;
 
 import com.example.kyc_system.context.TenantContext;
-import com.example.kyc_system.entity.Tenant;
-import com.example.kyc_system.repository.TenantRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -26,8 +24,7 @@ import java.util.Map;
  *
  * Tenant resolution priority:
  * 1. JWT claim "tenantId" (from authenticated user's token)
- * 2. X-Tenant-ID request header (for API key or unauthenticated flows)
- * 3. X-API-Key header (looks up tenant by API key in the database)
+ * 2. X-Tenant-ID request header (for public endpoints)
  *
  * Super admins bypass tenant scoping entirely.
  * Always clears TenantContext in the finally block to prevent thread pool leaks.
@@ -38,15 +35,10 @@ import java.util.Map;
 @Slf4j
 public class TenantResolutionFilter extends OncePerRequestFilter {
 
-    private final TenantRepository tenantRepository;
-
     private static final String MDC_TENANT_KEY = "tenantId";
 
     // These paths don't need tenant context (public endpoints)
     private static final List<String> EXCLUDED_PATHS = List.of(
-            "/api/auth/login",
-            "/api/auth/forgot-password",
-            "/api/auth/change-password",
             "/swagger-ui/",
             "/v3/api-docs",
             "/swagger-ui",
@@ -75,7 +67,7 @@ public class TenantResolutionFilter extends OncePerRequestFilter {
                 return;
             }
 
-            // Resolve tenant ID from JWT, header, or API key
+            // Resolve tenant ID from JWT or header
             String tenantId = resolveTenantId(request, auth);
 
             if (tenantId == null || tenantId.isBlank()) {
@@ -85,20 +77,6 @@ public class TenantResolutionFilter extends OncePerRequestFilter {
             }
             log.debug("Resolved tenant ID: {}", tenantId);
 
-            // Validate tenant exists and is active in the database
-            Tenant tenant = tenantRepository.findByTenantId(tenantId).orElse(null);
-
-            if (tenant == null) {
-                log.warn("Tenant not found for ID: {}. Sending 400.", tenantId);
-                sendError(response, "Tenant not found: " + tenantId);
-                return;
-            }
-
-            if (!tenant.getIsActive()) {
-                sendError(response, "Tenant is inactive: " + tenantId);
-                return;
-            }
-
             // Set tenant for downstream services to use
             TenantContext.setTenant(tenantId);
             MDC.put(MDC_TENANT_KEY, tenantId); // ← MDC: overwrite the "resolving" placeholder
@@ -107,8 +85,6 @@ public class TenantResolutionFilter extends OncePerRequestFilter {
 
         } finally {
             TenantContext.clear(); // ALWAYS clean up — prevents thread pool leaks
-            // Note: MdcLoggingFilter (Order 1) owns the MDC lifecycle and clears it.
-            // We only overwrite the tenantId key here; we do NOT call MDC.clear().
         }
     }
 
@@ -116,7 +92,6 @@ public class TenantResolutionFilter extends OncePerRequestFilter {
      * Resolves tenant ID from multiple sources with priority:
      * 1. JWT claim (set by JwtAuthenticationFilter in auth details)
      * 2. X-Tenant-ID header
-     * 3. X-API-Key header (looks up tenant by API key)
      */
     @SuppressWarnings("unchecked")
     private String resolveTenantId(HttpServletRequest request, Authentication auth) {
@@ -129,16 +104,10 @@ public class TenantResolutionFilter extends OncePerRequestFilter {
             }
         }
 
-        // Priority 2: From request header (for API key based access)
+        // Priority 2: From request header
         String header = request.getHeader("X-Tenant-ID");
         if (header != null && !header.isBlank()) {
             return header;
-        }
-
-        // Priority 3: From API key header
-        String apiKey = request.getHeader("X-API-Key");
-        if (apiKey != null) {
-            return tenantRepository.findByApiKey(apiKey).map(Tenant::getTenantId).orElse(null);
         }
 
         return null;

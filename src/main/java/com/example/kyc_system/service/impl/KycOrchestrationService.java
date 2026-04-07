@@ -51,7 +51,7 @@ public class KycOrchestrationService {
          * @return newly created or reused KYC request ID
          */
         @Transactional
-        public Long submitKyc(Long userId, DocumentType documentType, MultipartFile file, String documentNumber) {
+        public Long submitKyc(String userId, DocumentType documentType, MultipartFile file, String documentNumber) {
                 fileValidator.validate(file);
                 if (documentService.isVerified(userId, documentType, documentNumber)) {
                         throw new RuntimeException("Your " + documentType + " is already verified. No further action is required.");

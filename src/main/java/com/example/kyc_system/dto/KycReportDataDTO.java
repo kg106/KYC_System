@@ -12,7 +12,7 @@ import lombok.Data;
 @Data
 @Builder
 public class KycReportDataDTO {
-    private Long userId;
+    private String userId;
     private Long kycRequestId;
     private String userName;
     private LocalDate dob;

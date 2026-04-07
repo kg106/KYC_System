@@ -80,8 +80,9 @@ public class AuditLog {
     /**
      * ID of the tenant where the action occurred.
      */
-    @Column(name = "tenant_id", nullable = false, length = 50)
-    private String tenantId;
+    @JdbcTypeCode(SqlTypes.UUID)
+    @Column(name = "tenant_id", nullable = false)
+    private java.util.UUID tenantId;
 
     /**
      * Unique request ID.

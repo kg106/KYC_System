@@ -60,7 +60,7 @@ public class KycController {
     @PreAuthorize("@securityService.canAccessUser(#userId)")
     @Operation(summary = "Upload KYC Document", description = "Upload a KYC document for verification")
     public ResponseEntity<?> uploadDocument(
-            @Parameter(description = "User ID", required = true) @RequestParam("userId") Long userId,
+            @Parameter(description = "User ID", required = true) @RequestParam("userId") String userId,
             @Parameter(description = "Document Type", required = true) @RequestParam("documentType") DocumentType documentType,
             @Parameter(description = "KYC Document File", required = true) @RequestParam("file") MultipartFile file,
             @Parameter(description = "Document Number", required = true) @RequestParam("documentNumber") String documentNumber) {
@@ -84,7 +84,7 @@ public class KycController {
     @GetMapping("/status/{userId}")
     @PreAuthorize("@securityService.canAccessUser(#userId)")
     @Operation(summary = "Get KYC Status", description = "Retrieves the latest KYC request status for a specific user")
-    public ResponseEntity<?> getKycStatus(@PathVariable Long userId) {
+    public ResponseEntity<?> getKycStatus(@PathVariable String userId) {
         log.debug("KYC status lookup: userId={}", userId);
         return requestService.getLatestByUser(userId).map(request -> ResponseEntity.ok(formatKycResponse(request)))
                 .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -100,7 +100,7 @@ public class KycController {
     @GetMapping("/status/all/{userId}")
     @PreAuthorize("@securityService.canAccessUser(#userId)")
     @Operation(summary = "Get All KYC Requests Status", description = "Retrieves all KYC request history for a specific user. Available to self or ADMIN.")
-    public ResponseEntity<?> getAllKycStatus(@PathVariable Long userId) {
+    public ResponseEntity<?> getAllKycStatus(@PathVariable String userId) {
         List<KycRequest> requests = requestService.getAllByUser(userId);
 
         if (requests.isEmpty()) {
@@ -130,7 +130,7 @@ public class KycController {
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Search KYC Requests", description = "Search KYC requests with filters and pagination. Restricted to ADMIN.")
     public ResponseEntity<Page<Map<String, Object>>> searchKycRequests(
-            @RequestParam(required = false) Long userId,
+            @RequestParam(required = false) String userId,
             @RequestParam(required = false) String userName,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String documentType,

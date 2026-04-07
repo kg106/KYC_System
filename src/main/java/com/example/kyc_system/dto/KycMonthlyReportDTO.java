@@ -31,7 +31,5 @@ public class KycMonthlyReportDTO {
     private long pending; // PENDING + SUBMITTED + PROCESSING
     private double passRate;
     private Map<String, Long> breakdownByDocumentType; // PAN=12, AADHAAR=8, etc.
-    private long newUsersRegistered;
-    private long totalActiveUsers;
     private List<KycReportDataDTO> kycData;
 }

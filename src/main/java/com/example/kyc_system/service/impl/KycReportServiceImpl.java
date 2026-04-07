@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import com.example.kyc_system.service.KycReportService;
 import com.example.kyc_system.service.KycRequestService;
@@ -14,7 +15,6 @@ import org.springframework.stereotype.Service;
 import com.example.kyc_system.dto.KycMonthlyReportDTO;
 import com.example.kyc_system.dto.KycReportDataDTO;
 import com.example.kyc_system.repository.KycRequestRepository;
-import com.example.kyc_system.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,7 +31,6 @@ public class KycReportServiceImpl implements KycReportService {
 
         private final KycRequestRepository kycRequestRepository;
         private final KycRequestService requestService;
-        private final UserRepository userRepository;
 
         /**
          * Generates a structural monthly report DTO with aggregated statistics.
@@ -49,7 +48,7 @@ public class KycReportServiceImpl implements KycReportService {
                 // Status breakdown: fetching [status, count] pairs from repo
                 Map<String, Long> statusMap = new HashMap<>();
                 if (tenantId != null) {
-                        kycRequestRepository.countByStatusBetween(tenantId, from, to)
+                        kycRequestRepository.countByStatusBetween(UUID.fromString(tenantId), from, to)
                                         .forEach(row -> statusMap.put((String) row[0], (Long) row[1]));
                 } else {
                         kycRequestRepository.countByStatusBetween(from, to)
@@ -67,22 +66,11 @@ public class KycReportServiceImpl implements KycReportService {
                 // Document type breakdown: fetching [type, count] pairs
                 Map<String, Long> docTypeMap = new LinkedHashMap<>();
                 if (tenantId != null) {
-                        kycRequestRepository.countByDocumentTypeBetween(tenantId, from, to)
+                        kycRequestRepository.countByDocumentTypeBetween(UUID.fromString(tenantId), from, to)
                                         .forEach(row -> docTypeMap.put((String) row[0], (Long) row[1]));
                 } else {
                         kycRequestRepository.countByDocumentTypeBetween(from, to)
                                         .forEach(row -> docTypeMap.put((String) row[0], (Long) row[1]));
-                }
-
-                // User registration stats
-                long newUsers;
-                long totalUsers;
-                if (tenantId != null) {
-                        newUsers = userRepository.countNewUsersBetween(tenantId, from, to);
-                        totalUsers = userRepository.countByTenantId(tenantId);
-                } else {
-                        newUsers = userRepository.countNewUsersBetween(from, to);
-                        totalUsers = userRepository.count();
                 }
 
                 // Detailed data list from RequestService
@@ -100,8 +88,6 @@ public class KycReportServiceImpl implements KycReportService {
                                 .pending(pending)
                                 .passRate(passRate)
                                 .breakdownByDocumentType(docTypeMap)
-                                .newUsersRegistered(newUsers)
-                                .totalActiveUsers(totalUsers)
                                 .kycData(reportData)
                                 .build();
         }

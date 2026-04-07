@@ -36,8 +36,9 @@ public class KycDocument extends BaseEntity {
     /**
      * ID of the tenant the document belongs to.
      */
-    @Column(name = "tenant_id", nullable = false, length = 50)
-    private String tenantId;
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.UUID)
+    @Column(name = "tenant_id", nullable = false)
+    private java.util.UUID tenantId;
 
     /**
      * Type of document (e.g., "AADHAR", "PAN").

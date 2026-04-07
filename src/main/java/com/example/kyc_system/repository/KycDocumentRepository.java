@@ -60,6 +60,6 @@ public interface KycDocumentRepository extends JpaRepository<KycDocument, Long> 
    * @param status the request status to check against
    * @return true if a matching active request exists
    */
-  boolean existsByKycRequest_User_IdAndDocumentTypeAndDocumentNumberAndKycRequest_Status(
-      Long userId, String documentType, String documentNumber, String status);
+  boolean existsByKycRequest_UserIdAndDocumentTypeAndDocumentNumberAndKycRequest_Status(
+      java.util.UUID userId, String documentType, String documentNumber, String status);
 }

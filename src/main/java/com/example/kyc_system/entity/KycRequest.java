@@ -26,17 +26,18 @@ public class KycRequest extends BaseEntity {
     private Long id;
 
     /**
-     * The user who submitted the KYC request.
+     * The UUID of the user who submitted the KYC request.
      */
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.UUID)
+    @Column(name = "user_id", nullable = false)
+    private java.util.UUID userId;
 
     /**
      * ID of the tenant the request belongs to.
      */
-    @Column(name = "tenant_id", nullable = false, length = 50)
-    private String tenantId;
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.UUID)
+    @Column(name = "tenant_id", nullable = false)
+    private java.util.UUID tenantId;
 
     /**
      * The current status of the KYC request (e.g., "SUBMITTED", "PROCESSING", "VERIFIED", "REJECTED").

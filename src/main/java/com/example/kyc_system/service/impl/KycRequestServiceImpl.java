@@ -1,17 +1,13 @@
 package com.example.kyc_system.service.impl;
 
-import com.example.kyc_system.dto.UserDTO;
+import com.example.kyc_system.client.AuthServiceClient;
+import com.example.kyc_system.dto.AuthUserDTO;
 import com.example.kyc_system.entity.KycRequest;
-import com.example.kyc_system.entity.Tenant;
-import com.example.kyc_system.entity.User;
 import com.example.kyc_system.enums.KycStatus;
 import com.example.kyc_system.repository.KycRequestRepository;
-import com.example.kyc_system.repository.TenantRepository;
 
-import com.example.kyc_system.repository.UserRepository;
 import com.example.kyc_system.service.AuditLogService;
 import com.example.kyc_system.service.KycRequestService;
-import com.example.kyc_system.service.UserService;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,13 +23,13 @@ import com.example.kyc_system.dto.KycRequestSearchDTO;
 import com.example.kyc_system.repository.specification.KycRequestSpecification;
 
 import java.util.*;
+import java.util.UUID;
 import java.time.*;
 import org.springframework.security.core.context.*;
 
 /**
  * Implementation of KycRequestService.
- * Manages the KYC request lifecycle, including attempt limits per tenant,
- * state transition validation, and audit logging.
+ * Manages the KYC request lifecycle, state transition validation, and audit logging.
  * Enforces strict multi-tenant isolation for all operations.
  */
 @Service
@@ -43,10 +39,8 @@ import org.springframework.security.core.context.*;
 public class KycRequestServiceImpl implements KycRequestService {
 
     private final KycRequestRepository repository;
-    private final UserService userService;
     private final AuditLogService auditLogService;
-    private final TenantRepository tenantRepository;
-    private final UserRepository userRepository;
+    private final AuthServiceClient authServiceClient;
 
     /** Helper to get current principal name from SecurityContext. */
     private String getCurrentUser() {
@@ -58,7 +52,6 @@ public class KycRequestServiceImpl implements KycRequestService {
 
     /**
      * Creates a new KYC request or re-activates a FAILED one.
-     * Enforces tenant-specific daily attempt limits.
      * Starts a NEW transaction to ensure the attempt is recorded even if subsequent
      * steps fail.
      *
@@ -68,22 +61,11 @@ public class KycRequestServiceImpl implements KycRequestService {
      */
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public KycRequest createOrReuse(Long userId, String documentType) {
-        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found with User ID: " + userId));
-        String tenantId = user.getTenantId();
-        LocalDateTime startOfDay = LocalDateTime.now().with(LocalTime.MIN);
+    public KycRequest createOrReuse(String userId, String documentType) {
+        String tenantId = TenantContext.getTenant();
 
-        // Use tenant-specific daily limit
-        Tenant tenant = tenantRepository.findByTenantId(tenantId).orElseThrow(() -> new RuntimeException("Tenant not found"));
-
-        long totalAttemptsToday = repository.sumAttemptNumberByUserIdAndTenantIdAndSubmittedAtAfter(userId, tenantId, startOfDay);
-
-        if (totalAttemptsToday >= tenant.getMaxDailyAttempts()) {
-            log.warn("Daily KYC limit reached: userId={}, tenantId={}, attempts={}", userId, tenantId, totalAttemptsToday);
-            throw new RuntimeException("Daily KYC attempt limit reached (" + tenant.getMaxDailyAttempts() + "). Please try again tomorrow.");
-        }
-
-        Optional<KycRequest> latestRequest = repository.findTopByUserIdAndDocumentTypeAndTenantIdOrderByCreatedAtDesc(userId, documentType, tenantId);
+        Optional<KycRequest> latestRequest = repository.findTopByUserIdAndDocumentTypeAndTenantIdOrderByCreatedAtDesc(
+                UUID.fromString(userId), documentType, UUID.fromString(tenantId));
 
         if (latestRequest.isPresent()) {
             KycRequest request = latestRequest.get();
@@ -107,14 +89,13 @@ public class KycRequestServiceImpl implements KycRequestService {
         }
 
         // Create fresh request
-//        User user = userService.getActiveUser(userId);
         KycRequest newRequest = new KycRequest();
-        newRequest.setUser(user);
+        newRequest.setUserId(UUID.fromString(userId));
         newRequest.setDocumentType(documentType);
         newRequest.setStatus(KycStatus.SUBMITTED.name());
         newRequest.setAttemptNumber(1);
         newRequest.setSubmittedAt(LocalDateTime.now());
-        newRequest.setTenantId(tenantId);
+        newRequest.setTenantId(UUID.fromString(tenantId));
 
         try {
             KycRequest saved = repository.save(newRequest);
@@ -155,14 +136,8 @@ public class KycRequestServiceImpl implements KycRequestService {
      */
     @Override
     @Transactional(readOnly = true)
-    public Optional<KycRequest> getLatestByUser(Long userId) {
-        // Superadmin bypass: they can see latest regardless of tenant if they are
-        // looking at a specific user
-        // But usually, getLatestByUser is called in context of a user.
-        // If TenantContext.getTenant() is SUPER_ADMIN,
-        // findTopByUserIdOrderByCreatedAtDesc
-        // works fine as it's not scoped by tenantId in the repository method itself.
-        Optional<KycRequest> request = repository.findTopByUserIdOrderByCreatedAtDesc(userId);
+    public Optional<KycRequest> getLatestByUser(String userId) {
+        Optional<KycRequest> request = repository.findTopByUserIdOrderByCreatedAtDesc(UUID.fromString(userId));
         request.ifPresent(r -> {
             r.getKycDocuments().forEach(doc -> doc.getExtractedData().size());
         });
@@ -183,13 +158,13 @@ public class KycRequestServiceImpl implements KycRequestService {
      */
     @Override
     @Transactional(readOnly = true)
-    public List<KycRequest> getAllByUser(Long userId) {
-        List<KycRequest> requests = repository.findByUserId(userId);
+    public List<KycRequest> getAllByUser(String userId) {
+        List<KycRequest> requests = repository.findByUserId(UUID.fromString(userId));
         requests.forEach(r -> {
             r.getKycDocuments().forEach(doc -> doc.getExtractedData().size());
         });
 
-        auditLogService.logAction("VIEW_HISTORY", "User", userId, "Viewed KYC history", getCurrentUser());
+        auditLogService.logAction("VIEW_HISTORY", "User", null, "Viewed KYC history for " + userId, getCurrentUser());
 
         return requests;
     }
@@ -231,9 +206,12 @@ public class KycRequestServiceImpl implements KycRequestService {
 
     /**
      * Generates report data by aggregating requests across specified date range.
+     * Fetches user details from Auth Service for each unique user to populate
+     * name, email, mobile, and DOB fields.
      *
      * @param dateFrom start date
      * @param dateTo   end date
+     * @param tenantId optional tenant filter
      * @return list of report DTOs
      */
     @Override
@@ -243,24 +221,39 @@ public class KycRequestServiceImpl implements KycRequestService {
 
         List<KycRequest> result;
         if (tenantId != null) {
-            result = repository.findByCreatedAtBetweenWithUserAndTenant(tenantId, dateFrom.atStartOfDay(),
+            result = repository.findByCreatedAtBetweenWithUserAndTenant(UUID.fromString(tenantId), dateFrom.atStartOfDay(),
                     dateTo.atTime(LocalTime.MAX));
         } else {
             result = repository.findByCreatedAtBetweenWithUserAndTenant(dateFrom.atStartOfDay(),
                     dateTo.atTime(LocalTime.MAX));
         }
 
+        // Cache user lookups to avoid redundant HTTP calls for the same user
+        Map<String, AuthUserDTO> userCache = new HashMap<>();
+
         for (KycRequest kr : result) {
+            String userId = kr.getUserId().toString();
+
+            // Fetch from Auth Service (cached per userId)
+            AuthUserDTO user = userCache.computeIfAbsent(userId, id -> {
+                try {
+                    return authServiceClient.getUserById(id);
+                } catch (Exception e) {
+                    log.warn("Failed to fetch user {} from Auth Service for report: {}", id, e.getMessage());
+                    return null;
+                }
+            });
+
             KycReportDataDTO temp = KycReportDataDTO.builder()
-                    .userId(kr.getUser().getId())
+                    .userId(kr.getUserId().toString())
                     .kycRequestId(kr.getId())
-                    .userName(kr.getUser().getName())
-                    .dob(kr.getUser().getDob())
+                    .userName(user != null ? user.getName() : "Unknown")
+                    .email(user != null ? user.getEmail() : null)
+                    .mobileNumber(user != null ? user.getMobileNumber() : null)
+                    .dob(user != null ? user.getDob() : null)
                     .status(kr.getStatus())
-                    .mobileNumber(kr.getUser().getMobileNumber())
-                    .email(kr.getUser().getEmail())
-                    .tenantId(kr.getTenantId())
-                    .tenantName(kr.getUser().getTenant().getName())
+                    .tenantId(kr.getTenantId().toString())
+                    .tenantName(kr.getTenantId().toString()) // tenant UUID — could be enriched later with tenant name endpoint
                     .documentType(kr.getDocumentType())
                     .attemptNumber(kr.getAttemptNumber())
                     .nameMatchScore(null)

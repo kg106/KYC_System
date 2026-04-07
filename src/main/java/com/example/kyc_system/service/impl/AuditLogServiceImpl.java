@@ -67,7 +67,8 @@ public class AuditLogServiceImpl implements AuditLogService {
      */
     private void logActionInternal(String action, String entityType, Long entityId, Map<String, Object> detailsMap,
             String performedBy) {
-        String tenantId = TenantContext.getTenant() != null ? TenantContext.getTenant() : "system";
+        String tenantIdStr = TenantContext.getTenant() != null ? TenantContext.getTenant() : "00000000-0000-0000-0000-000000000000";
+        java.util.UUID tenantId = java.util.UUID.fromString(tenantIdStr);
         Map<String, Object> maskedDetails = maskSensitiveData(detailsMap);
 
         AuditLog auditLog = AuditLog.builder()

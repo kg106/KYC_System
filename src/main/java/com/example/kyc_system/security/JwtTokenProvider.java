@@ -1,112 +1,64 @@
 package com.example.kyc_system.security;
 
-import io.jsonwebtoken.*;
-import io.jsonwebtoken.io.Decoders;
-import io.jsonwebtoken.security.Keys;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.core.Authentication;
-import org.springframework.stereotype.Component;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.MalformedJwtException;
+import io.jsonwebtoken.UnsupportedJwtException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
 
-import java.security.Key;
-import java.util.Date;
+import java.util.List;
 
 /**
- * Utility class for JWT (JSON Web Token) operations:
- * - Token generation (with tenantId claim for multi-tenancy)
- * - Token validation
- * - Extracting username and tenantId from tokens
- * - Calculating remaining TTL (for blacklisting on logout)
+ * Utility class for JWT (JSON Web Token) operations using Auth Service RS256 Keys:
+ * - Token validation via JWKS
+ * - Extracting custom claims (userId, tenantId, status, roles)
  */
 @Component
 @Slf4j
 public class JwtTokenProvider {
 
-    @Value("${app.jwt-secret}")
-    private String jwtSecret;
+    private final JwksKeyProvider keyProvider;
 
-    @Value("${app.jwt-expiration-milliseconds}")
-    private long jwtExpirationDate;
-
-    /**
-     * Generates a JWT access token from the authenticated user with a tenantId claim.
-     * The tenantId is embedded so TenantResolutionFilter can scope requests without a header.
-     *
-     * @param authentication the authentication object containing user details
-     * @param tenantId the ID of the tenant the user belongs to
-     * @return a signed JWT token string
-     */
-    public String generateToken(Authentication authentication, String tenantId) {
-        String username = authentication.getName();
-        Date now = new Date();
-        Date expireDate = new Date(now.getTime() + jwtExpirationDate);
-
-        return Jwts.builder()
-                .setSubject(username)
-                .claim("tenantId", tenantId) // Embed tenant in token for multi-tenant scoping
-                .setIssuedAt(now)
-                .setExpiration(expireDate)
-                .signWith(key())
-                .compact();
+    public JwtTokenProvider(JwksKeyProvider keyProvider) {
+        this.keyProvider = keyProvider;
     }
 
-    /**
-     * Generates a JWT token from username only (used during token refresh).
-     *
-     * @param username the username to include in the token subject
-     * @return a signed JWT token string
-     */
-    public String generateTokenFromUsername(String username) {
-        Date now = new Date();
-        Date expireDate = new Date(now.getTime() + jwtExpirationDate);
-        return Jwts.builder()
-                .setSubject(username)
-                .setIssuedAt(now)
-                .setExpiration(expireDate)
-                .signWith(key())
-                .compact();
+    public Claims validateAndGetClaims(String token) {
+        Claims claims = Jwts.parserBuilder()
+                .setSigningKey(keyProvider.getPublicKey())
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+        log.info("JWT Claims from Auth Service: {}", claims);
+        return claims;
     }
 
-    /**
-     * Builds the HMAC signing key from the Base64-encoded secret.
-     *
-     * @return the cryptographic key for signing/verifying tokens
-     */
-    private Key key() {
-        return Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtSecret));
-    }
-
-    /**
-     * Extracts the username (subject) from a JWT token.
-     *
-     * @param token the JWT token string
-     * @return the username embedded in the token
-     */
     public String getUsername(String token) {
-        Claims claims = Jwts.parserBuilder().setSigningKey(key()).build().parseClaimsJws(token).getBody();
-        return claims.getSubject();
+        return validateAndGetClaims(token).getSubject();
     }
 
-    /**
-     * Extracts the tenantId custom claim from a JWT token.
-     *
-     * @param token the JWT token string
-     * @return the tenantId claim value
-     */
-    public String getTenantIdFromToken(String token) {
-        Claims claims = Jwts.parserBuilder().setSigningKey(key()).build().parseClaimsJws(token).getBody();
-        return claims.get("tenantId", String.class);
+    public String getUserId(String token) {
+        return validateAndGetClaims(token).get("userId", String.class);
     }
 
-    /**
-     * Validates the JWT token (checks signature, expiration, etc.).
-     *
-     * @param token the JWT token string
-     * @return true if the token is valid, false otherwise
-     */
+    public String getTenantId(String token) {
+        return validateAndGetClaims(token).get("tenantId", String.class);
+    }
+
+    @SuppressWarnings("unchecked")
+    public List<String> getRoles(String token) {
+        return validateAndGetClaims(token).get("roles", List.class);
+    }
+
+    public String getStatus(String token) {
+        return validateAndGetClaims(token).get("status", String.class);
+    }
+
     public boolean validateToken(String token) {
         try {
-            Jwts.parserBuilder().setSigningKey(key()).build().parse(token);
+            validateAndGetClaims(token);
             return true;
         } catch (io.jsonwebtoken.security.SignatureException | MalformedJwtException | ExpiredJwtException
                 | UnsupportedJwtException | IllegalArgumentException e) {
@@ -114,16 +66,5 @@ public class JwtTokenProvider {
             return false;
         }
     }
-
-    /**
-     * Returns the remaining time (ms) before this token expires.
-     * Used by TokenBlacklistService to set Redis TTL matching the token's remaining life.
-     *
-     * @param token the JWT token string
-     * @return remaining time in milliseconds
-     */
-    public long getExpirationRemaining(String token) {
-        Claims claims = Jwts.parserBuilder().setSigningKey(key()).build().parseClaimsJws(token).getBody();
-        return claims.getExpiration().getTime() - System.currentTimeMillis();
-    }
 }
+

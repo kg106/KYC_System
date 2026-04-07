@@ -25,7 +25,7 @@ public interface KycRequestService {
      * @param documentType type of document
      * @return the KycRequest entity
      */
-    KycRequest createOrReuse(Long userId, String documentType);
+    KycRequest createOrReuse(String userId, String documentType);
 
     /**
      * Updates the status of a KYC request.
@@ -41,7 +41,7 @@ public interface KycRequestService {
      * @param userId user ID
      * @return optional KycRequest
      */
-    Optional<KycRequest> getLatestByUser(Long userId);
+    Optional<KycRequest> getLatestByUser(String userId);
 
     /**
      * Retrieves all KYC requests for a user.
@@ -49,7 +49,7 @@ public interface KycRequestService {
      * @param userId user ID
      * @return list of KycRequests
      */
-    List<KycRequest> getAllByUser(Long userId);
+    List<KycRequest> getAllByUser(String userId);
 
     /**
      * Searches KYC requests with filters and pagination.

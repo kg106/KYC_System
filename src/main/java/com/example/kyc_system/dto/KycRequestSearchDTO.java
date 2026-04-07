@@ -17,7 +17,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class KycRequestSearchDTO {
     /** Filter by user ID. */
-    private Long userId;
+    private String userId;
 
     /** Filter by user's full name (partial match). */
     private String userName;

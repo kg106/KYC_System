@@ -75,9 +75,9 @@ public class KycDocumentServiceImpl implements KycDocumentService {
 
     /** Checks if a specific document number has already been verified for a user. */
     @Override
-    public boolean isVerified(Long userId, DocumentType documentType, String documentNumber) {
-        return repository.existsByKycRequest_User_IdAndDocumentTypeAndDocumentNumberAndKycRequest_Status(
-                userId, documentType.name(), documentNumber, "VERIFIED");
+    public boolean isVerified(String userId, DocumentType documentType, String documentNumber) {
+        return repository.existsByKycRequest_UserIdAndDocumentTypeAndDocumentNumberAndKycRequest_Status(
+                java.util.UUID.fromString(userId), documentType.name(), documentNumber, "VERIFIED");
     }
 
     /**

@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Repository interface for KycRequest entity.
@@ -25,7 +26,7 @@ public interface KycRequestRepository extends JpaRepository<KycRequest, Long>, J
      * @param userId the user's ID
      * @return a list of KYC requests
      */
-    List<KycRequest> findByUserId(Long userId);
+    List<KycRequest> findByUserId(UUID userId);
 
     /**
      * Finds all KYC requests for a given user within a specific tenant.
@@ -34,7 +35,7 @@ public interface KycRequestRepository extends JpaRepository<KycRequest, Long>, J
      * @param tenantId the unique identifier for the tenant
      * @return a list of KYC requests
      */
-    List<KycRequest> findByUserIdAndTenantId(Long userId, String tenantId);
+    List<KycRequest> findByUserIdAndTenantId(UUID userId, UUID tenantId);
 
     /**
      * Counts the total number of KYC requests in a specific tenant.
@@ -42,7 +43,7 @@ public interface KycRequestRepository extends JpaRepository<KycRequest, Long>, J
      * @param tenantId the unique identifier for the tenant
      * @return total request count
      */
-    long countByTenantId(String tenantId);
+    long countByTenantId(UUID tenantId);
 
     /**
      * Counts KYC requests in a specific tenant filtered by their status.
@@ -51,7 +52,7 @@ public interface KycRequestRepository extends JpaRepository<KycRequest, Long>, J
      * @param status the status to filter by (e.g., "PENDING")
      * @return matching request count
      */
-    long countByTenantIdAndStatus(String tenantId, String status);
+    long countByTenantIdAndStatus(UUID tenantId, String status);
 
     /**
      * Finds KYC requests created within a specific time range.
@@ -70,7 +71,7 @@ public interface KycRequestRepository extends JpaRepository<KycRequest, Long>, J
      * @param to end of the time range (exclusive)
      * @return list of matching requests with fetched associations
      */
-    @Query("SELECT kr FROM KycRequest kr JOIN FETCH kr.user u JOIN FETCH u.tenant WHERE kr.createdAt BETWEEN :from AND :to")
+    @Query("SELECT kr FROM KycRequest kr WHERE kr.createdAt BETWEEN :from AND :to")
     List<KycRequest> findByCreatedAtBetweenWithUserAndTenant(@Param("from") LocalDateTime from,
             @Param("to") LocalDateTime to);
 
@@ -82,8 +83,8 @@ public interface KycRequestRepository extends JpaRepository<KycRequest, Long>, J
      * @param to end of range
      * @return list of matching requests
      */
-    @Query("SELECT kr FROM KycRequest kr JOIN FETCH kr.user u JOIN FETCH u.tenant WHERE kr.tenantId = :tenantId AND kr.createdAt BETWEEN :from AND :to")
-    List<KycRequest> findByCreatedAtBetweenWithUserAndTenant(@Param("tenantId") String tenantId,
+    @Query("SELECT kr FROM KycRequest kr WHERE kr.tenantId = :tenantId AND kr.createdAt BETWEEN :from AND :to")
+    List<KycRequest> findByCreatedAtBetweenWithUserAndTenant(@Param("tenantId") UUID tenantId,
             @Param("from") LocalDateTime from,
             @Param("to") LocalDateTime to);
 
@@ -95,7 +96,7 @@ public interface KycRequestRepository extends JpaRepository<KycRequest, Long>, J
      * @return an Optional containing the latest request
      */
     Optional<KycRequest> findTopByUserIdAndTenantIdOrderByCreatedAtDesc(
-            Long userId, String tenantId);
+            UUID userId, UUID tenantId);
 
     /**
      * Retrieves the latest KYC request for a user, specific document type, and tenant.
@@ -106,7 +107,7 @@ public interface KycRequestRepository extends JpaRepository<KycRequest, Long>, J
      * @return an Optional containing the latest matching request
      */
     Optional<KycRequest> findTopByUserIdAndDocumentTypeAndTenantIdOrderByCreatedAtDesc(
-            Long userId, String documentType, String tenantId);
+            UUID userId, String documentType, UUID tenantId);
 
     /**
      * Retrieves the latest KYC request for a user globally, ordered by attempt number.
@@ -114,7 +115,7 @@ public interface KycRequestRepository extends JpaRepository<KycRequest, Long>, J
      * @param userId the user's ID
      * @return an Optional containing the highest attempt number request
      */
-    Optional<KycRequest> findTopByUserIdOrderByAttemptNumberDesc(Long userId);
+    Optional<KycRequest> findTopByUserIdOrderByAttemptNumberDesc(UUID userId);
 
     /**
      * Retrieves the latest KYC request for a user globally.
@@ -122,7 +123,7 @@ public interface KycRequestRepository extends JpaRepository<KycRequest, Long>, J
      * @param userId the user's ID
      * @return an Optional containing the latest request
      */
-    Optional<KycRequest> findTopByUserIdOrderByCreatedAtDesc(Long userId);
+    Optional<KycRequest> findTopByUserIdOrderByCreatedAtDesc(UUID userId);
 
     /**
      * Retrieves the latest KYC request for a user and document type globally.
@@ -131,7 +132,7 @@ public interface KycRequestRepository extends JpaRepository<KycRequest, Long>, J
      * @param documentType the document type
      * @return an Optional containing the latest matching request
      */
-    Optional<KycRequest> findTopByUserIdAndDocumentTypeOrderByCreatedAtDesc(Long userId, String documentType);
+    Optional<KycRequest> findTopByUserIdAndDocumentTypeOrderByCreatedAtDesc(UUID userId, String documentType);
 
     /**
      * Sums the attempt numbers for a user since or at a specific time today.
@@ -141,8 +142,8 @@ public interface KycRequestRepository extends JpaRepository<KycRequest, Long>, J
      * @param startOfDay the timestamp for the start of the day
      * @return total attempts made today
      */
-    @Query("SELECT COALESCE(SUM(k.attemptNumber), 0) FROM KycRequest k WHERE k.user.id = :userId AND k.submittedAt >= :startOfDay")
-    long sumAttemptNumberByUserIdAndSubmittedAtGreaterThanEqual(@Param("userId") Long userId,
+    @Query("SELECT COALESCE(SUM(k.attemptNumber), 0) FROM KycRequest k WHERE k.userId = :userId AND k.submittedAt >= :startOfDay")
+    long sumAttemptNumberByUserIdAndSubmittedAtGreaterThanEqual(@Param("userId") UUID userId,
             @Param("startOfDay") LocalDateTime startOfDay);
 
     /**
@@ -157,13 +158,13 @@ public interface KycRequestRepository extends JpaRepository<KycRequest, Long>, J
     @Query("""
                     SELECT COALESCE(SUM(k.attemptNumber), 0)
                     FROM KycRequest k
-                    WHERE k.user.id = :userId
+                    WHERE k.userId = :userId
                     AND k.tenantId = :tenantId
                     AND k.submittedAt >= :startOfDay
             """)
     long sumAttemptNumberByUserIdAndTenantIdAndSubmittedAtAfter(
-            @Param("userId") Long userId,
-            @Param("tenantId") String tenantId,
+            @Param("userId") UUID userId,
+            @Param("tenantId") UUID tenantId,
             @Param("startOfDay") LocalDateTime startOfDay);
 
     /**
@@ -173,7 +174,7 @@ public interface KycRequestRepository extends JpaRepository<KycRequest, Long>, J
      * @param startOfDay the start of the day timestamp
      * @return count of submissions today
      */
-    long countByUserIdAndSubmittedAtGreaterThanEqual(Long userId, LocalDateTime startOfDay);
+    long countByUserIdAndSubmittedAtGreaterThanEqual(UUID userId, LocalDateTime startOfDay);
 
     /**
      * Finds all requests currently in a specific status.
@@ -246,7 +247,7 @@ public interface KycRequestRepository extends JpaRepository<KycRequest, Long>, J
                 GROUP BY k.status
             """)
     List<Object[]> countByStatusBetween(
-            @Param("tenantId") String tenantId,
+            @Param("tenantId") UUID tenantId,
             @Param("from") LocalDateTime from,
             @Param("to") LocalDateTime to);
 
@@ -280,7 +281,7 @@ public interface KycRequestRepository extends JpaRepository<KycRequest, Long>, J
                 GROUP BY k.documentType
             """)
     List<Object[]> countByDocumentTypeBetween(
-            @Param("tenantId") String tenantId,
+            @Param("tenantId") UUID tenantId,
             @Param("from") LocalDateTime from,
             @Param("to") LocalDateTime to);
 

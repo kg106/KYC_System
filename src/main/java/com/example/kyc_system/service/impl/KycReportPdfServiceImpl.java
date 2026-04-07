@@ -64,7 +64,7 @@ public class KycReportPdfServiceImpl implements KycReportPdfService {
 
             kycDataRows.append(String.format("""
                     <tr>
-                    <td style="padding:8px 12px; border-bottom:1px solid #eee;">%d</td>
+                    <td style="padding:8px 12px; border-bottom:1px solid #eee;">%s</td>
                     <td style="padding:8px 12px; border-bottom:1px solid #eee;">%s</td>
                     <td style="padding:8px 12px; border-bottom:1px solid #eee;">%s</td>
                     <td style="padding:8px 12px; border-bottom:1px solid #eee; text-align:center; color:%s;">%s</td>
@@ -153,10 +153,6 @@ public class KycReportPdfServiceImpl implements KycReportPdfService {
                                 </tbody>
                             </table>
 
-                            <div style="margin-top: 20px;">
-                                <strong>User Statistics:</strong> New Registrations: %d | Total Active Users: %d
-                            </div>
-
                             <h3>Detailed KYC Data</h3>
                             <table>
                                 <thead>
@@ -188,7 +184,6 @@ public class KycReportPdfServiceImpl implements KycReportPdfService {
                 r.getTotalRequests(), r.getVerified(), r.getFailed(), r.getPending(),
                 r.getPassRate(),
                 docRows,
-                r.getNewUsersRegistered(), r.getTotalActiveUsers(),
                 kycDataRows,
                 java.time.LocalDateTime.now());
     }

@@ -75,44 +75,6 @@ public abstract class BaseIntegrationTest {
         // this
 
         // ── helpers ──────────────────────────────────────────────────────────────
-
-        // Simple fix — add an overload that accepts tenantId
-        protected String loginAndGetToken(String email, String password, String tenantId) throws Exception {
-                String body = """
-                                {"email": "%s", "password": "%s"}
-                                """.formatted(email, password);
-
-                MvcResult result = mockMvc.perform(post("/api/auth/login")
-                                .header("X-Tenant-ID", tenantId) // kept for clarity even though excluded
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(body))
-                                .andExpect(status().isOk())
-                                .andReturn();
-
-                return objectMapper.readTree(result.getResponse().getContentAsString())
-                                .get("accessToken").asText();
-        }
-
-        // Keep existing one for backward compatibility — defaults to "default" tenant
-        protected String loginAndGetToken(String email, String password) throws Exception {
-                return loginAndGetToken(email, password, "default");
-        }
-
-        protected Long registerUser(String name, String email,
-                        String password, String tenantId) throws Exception {
-                String mobile = String.format("9%09d", Math.abs(email.hashCode()) % 1_000_000_000L);
-                String body = """
-                                {"name":"%s","email":"%s","password":"%s","mobileNumber":"%s"}
-                                """.formatted(name, email, password, mobile);
-
-                MvcResult result = mockMvc.perform(post("/api/auth/register")
-                                .header("X-Tenant-ID", tenantId)
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(body))
-                                .andExpect(status().isCreated())
-                                .andReturn();
-
-                return objectMapper.readTree(result.getResponse().getContentAsString())
-                                .get("id").asLong();
-        }
+        // Auth and registration endpoints have been moved to the centralized Auth Service.
+        // Test helpers for these have been removed. Use mock JWTs or wiremock for auth in integration tests.
 }
