@@ -1,0 +1,42 @@
+# ============================================================
+# .dockerignore — Excludes files from Docker build context
+# ============================================================
+
+# Build output
+target/
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+*.swp
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker files themselves
+Dockerfile
+docker-compose*.yml
+.env
+.env.*
+
+# Test files (not needed in image)
+**/*Test.java
+**/*Tests.java
+concurrent_kyc_test*.py
+create_test_image.py
+kyc_test_plan.jmx
+test_endpoints.sh
+
+# README
+README.md
+
+# Logs
+*.log
+logs/
